@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import useUserStore from '../../../hostelmanagers/users/application/user.store.js';
+import useUserStore from '../../../hostelmanagers/IAM/application/user.store.js';
 
 const userStore = useUserStore();
 

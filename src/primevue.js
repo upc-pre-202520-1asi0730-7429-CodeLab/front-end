@@ -19,6 +19,7 @@ import Calendar from 'primevue/calendar';
 import InputMask from 'primevue/inputmask';
 import ProgressSpinner from 'primevue/progressspinner';
 import Sidebar from 'primevue/sidebar';
+import {Select} from "primevue";
 
 export default (app) => {
     app.use(PrimeVue, {
@@ -43,4 +44,5 @@ export default (app) => {
     app.component('pv-input-mask', InputMask);
     app.component('pv-progress-spinner', ProgressSpinner);
     app.component('pv-sidebar', Sidebar);
+    app.component('pv-select', Panel);
 }

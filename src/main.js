@@ -9,7 +9,7 @@ import pinia from './pinia.js'
 
 const app = createApp(App);
 
-app.use(primevue);  // primevue(app);
+app.use(primevue);  // primevue(app); mamita
 app.use(i18n);
 app.use(router);
 app.use(pinia);

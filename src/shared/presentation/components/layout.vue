@@ -3,7 +3,7 @@ import TheHeader from './header-content.vue'
 import TheFooter from './footer-content.vue'
 import TheSidebar from './siderbar-content.vue'
 import { computed } from 'vue'
-import useUserStore from '../../../hostelmanagers/users/application/user.store.js';
+import useUserStore from '../../../hostelmanagers/IAM/application/user.store.js';
 
 const userStore = useUserStore();
 const isAuthenticated = computed(() => !!userStore.currentUser);
