@@ -7,7 +7,6 @@ import Tooltip from 'primevue/tooltip';
 const store = useHotelStore();
 const toast = useToast();
 
-// Directiva local para Tooltip (solo como respaldo, ya registrada globalmente)
 const vTooltip = Tooltip;
 
 onMounted(() => {
@@ -27,6 +26,38 @@ watch(
       }
     }
 );
+
+/**
+ * Maneja la eliminación de un hotel dado su ID.
+ * Nota: Por simplicidad, omitimos el ConfirmDialog, pero deberías agregarlo.
+ * @param {number} id - El ID del hotel a eliminar.
+ * @param {string} name - El nombre del hotel (para el mensaje).
+ */
+const handleDelete = async (id, name) => {
+  // 📢 Idealmente, aquí se implementaría un componente de confirmación (e.g., PrimeVue ConfirmPopup)
+  if (!confirm(`¿Estás seguro de que deseas eliminar el hotel "${name}"? Esta acción es irreversible.`)) {
+    return;
+  }
+
+  const success = await store.deleteHotel(id);
+
+  if (success) {
+    toast.add({
+      severity: 'success',
+      summary: 'Eliminación Exitosa',
+      detail: `El hotel "${name}" ha sido eliminado.`,
+      life: 3000
+    });
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Error al Eliminar',
+      detail: store.errors.length > 0 ? store.errors[0].toString() : `No se pudo eliminar el hotel "${name}".`,
+      life: 5000
+    });
+  }
+};
+
 </script>
 
 <template>
@@ -110,7 +141,7 @@ watch(
                 icon="pi pi-trash"
                 class="p-button-rounded p-button-text p-button-danger"
                 v-tooltip.top="'Eliminar Hotel'"
-            />
+                @click="handleDelete(data.id, data.name)" />
           </template>
         </pv-column>
       </pv-data-table>
@@ -126,13 +157,14 @@ watch(
 </template>
 
 <style scoped>
+/* (El resto de los estilos queda sin cambios) */
 /* -------------------------------------- */
 /* LAYOUT BASE Y PÁGINA */
 /* -------------------------------------- */
 
 .hotels-page-container {
-  padding: 2rem; /* Espaciado general */
-  background-color: #f8f9fa; /* Fondo suave */
+  padding: 2rem;
+  background-color: #f8f9fa;
   min-height: 100vh;
 }
 
@@ -142,7 +174,7 @@ watch(
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid #dee2e6; /* Separador sutil */
+  border-bottom: 1px solid #dee2e6;
 }
 
 .page-title-main {
@@ -155,7 +187,7 @@ watch(
 
 .header-icon {
   margin-right: 0.75rem;
-  color: #007bff; /* Color primario */
+  color: #007bff;
   font-size: 1.5rem;
 }
 
@@ -174,7 +206,7 @@ watch(
 
 .table-card-wrapper {
   background-color: #ffffff;
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08); /* Sombra suave y moderna */
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
   border-radius: 0.75rem;
   overflow: hidden;
 }
@@ -188,7 +220,7 @@ watch(
 }
 
 .hotels-data-table :deep(.p-datatable-thead > tr > th) {
-  background-color: #e9ecef; /* Fondo de encabezados de columna */
+  background-color: #e9ecef;
   color: #495057;
   font-weight: 600;
   font-size: 0.875rem;
@@ -200,7 +232,7 @@ watch(
 }
 
 .hotels-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background-color: #f1f3f5 !important; /* Resaltado al pasar el ratón */
+  background-color: #f1f3f5 !important;
 }
 
 /* Estilos de columnas específicas */
@@ -218,7 +250,7 @@ watch(
 }
 .hotel-image {
   width: 100%;
-  height: 4.5rem; /* 72px */
+  height: 4.5rem;
   object-fit: cover;
   border-radius: 0.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
