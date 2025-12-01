@@ -1,19 +1,7 @@
 <script setup>
-import {ref, onMounted, computed, watch} from "vue";
+import {ref, onMounted, computed} from "vue";
 import {useRouter, useRoute} from "vue-router";
 import {useToast} from 'primevue/usetoast';
-
-// Importar componentes de PrimeVue necesarios
-import PvCard from 'primevue/card';
-import PvToast from 'primevue/toast';
-import PvMessage from 'primevue/message';
-import PvDropdown from 'primevue/dropdown';
-import PvInputNumber from 'primevue/inputnumber';
-import PvInputText from 'primevue/inputtext';
-import PvFloatLabel from 'primevue/floatlabel';
-import PvButton from 'primevue/button';
-import PvDivider from 'primevue/divider';
-
 
 import {useRoomStore} from '../../application/room.store.js'; // Store de Habitaciones
 
@@ -25,30 +13,29 @@ const route = useRoute();
 const toast = useToast();
 
 // ⚠️ CONFIGURACIÓN DE CLOUDINARY
+// REEMPLAZA estos valores por los tuyos reales
 const CLOUD_NAME = 'doekyziqa';
-const UPLOAD_PRESET = 'hotel_unsigned_upload';
+const UPLOAD_PRESET = 'hotel_unsigned_upload'; // 👈 Asegúrate de usar tu preset para habitaciones.
 
 // --- ESTADO LOCAL ---
 
-const roomIdFromRoute = parseInt(route.params.id);
 const hotelIdFromRoute = parseInt(route.params.hotelId);
 
-// Data del formulario inicializada a partir de los datos del Store
+// Data del formulario: adaptada a la ROOM
 const form = ref({
-  id: roomIdFromRoute,
-  imagen: "", // URL de la imagen actual (se llena en onMounted)
-  type: "",
+  imagen: "", // URL de la imagen final
+  type: "", // Premium, Basic, Exclusive
   price: 0,
-  hotelId: hotelIdFromRoute,
+  hotelId: hotelIdFromRoute, // Obtenido de la URL
 });
 
-// Referencia para almacenar el archivo de imagen seleccionado para NUEVA subida
+// Referencia para almacenar el archivo de imagen seleccionado
 const imageFile = ref(null);
 
-const localError = ref("");
-const isImageUploading = ref(false);
-const fileInput = ref(null);
-const initialImageUrl = ref(""); // Para guardar la URL original y compararla
+const localError = ref(""); // Para errores locales (ej. Cloudinary)
+const localSuccess = ref(""); // Para mensajes de éxito
+const isImageUploading = ref(false); // Estado de subida de imagen
+const fileInput = ref(null); // Referencia al input de archivo
 
 // Opciones para el campo 'type'
 const roomTypes = ref([
@@ -60,57 +47,39 @@ const roomTypes = ref([
 
 // --- PROPIEDADES CALCULADAS ---
 
+// Comprobamos si el formulario está siendo procesado (incluye store.loading y subida de imagen)
 const isSubmitting = computed(() => roomStore.loading || isImageUploading.value);
 
-// Deshabilitar botón de submit si falta data esencial o si no hay cambios
+// Deshabilitar botón de submit si falta data esencial
 const isFormInvalid = computed(() => (
     !form.value.type ||
+    !form.value.hotelId ||
     form.value.price <= 0 ||
-    (!form.value.imagen && !imageFile.value)
+    (!form.value.imagen && !imageFile.value) // Requiere URL manual O archivo
 ));
 
 
-// --- INICIALIZACIÓN Y CARGA DE DATOS ---
+// --- INICIALIZACIÓN (Verificación de hotelId) ---
 
-onMounted(async () => {
-  if (isNaN(roomIdFromRoute) || isNaN(hotelIdFromRoute)) {
-    localError.value = "Error: ID de habitación o hotel no válido en la ruta.";
-    return;
-  }
-
-  // 1. Cargar datos de la habitación
-  await roomStore.fetchRoomById(roomIdFromRoute);
-
-  if (roomStore.currentRoom) {
-    // 2. Llenar el formulario con los datos cargados
-    const room = roomStore.currentRoom;
-    form.value.imagen = room.imagen || "";
-    form.value.type = room.type || "";
-    form.value.price = room.price || 0;
-
-    // Guardar la URL original para mostrarla y usarla como fallback
-    initialImageUrl.value = room.imagen || "";
-
-    if (room.hotelId !== hotelIdFromRoute) {
-      console.warn("Advertencia: El hotelId de la ruta no coincide con el de la habitación.");
-    }
-
-  } else if (roomStore.errors.length > 0) {
-    localError.value = `Error al cargar la habitación: ${roomStore.errors[0]}`;
-  } else {
-    localError.value = "No se encontraron datos para esta habitación.";
+onMounted(() => {
+  if (isNaN(hotelIdFromRoute)) {
+    localError.value = "Error: ID de hotel no válido en la ruta.";
+    router.push({name: 'room-list'}); // Redirigir si falta ID
   }
 });
 
+
 // --- LÓGICA DE IMAGEN (CLOUDINARY) ---
 
+// Función que se activa cuando se selecciona un archivo
 const onFileSelected = (event) => {
   const file = event.target.files[0];
-  localError.value = "";
+  localError.value = ""; // Limpiar errores al seleccionar nuevo archivo
 
   if (file) {
     imageFile.value = file;
-    form.value.imagen = ''; // Limpiar URL manual
+    // Desactivar URL manual si se selecciona archivo
+    form.value.imagen = '';
   }
 };
 
@@ -120,7 +89,7 @@ const onFileSelected = (event) => {
  */
 const uploadImageToCloudinary = async () => {
   if (!imageFile.value) {
-    return form.value.imagen || initialImageUrl.value;
+    return form.value.imagen; // Si no hay archivo, devuelve la URL manual
   }
 
   if (!CLOUD_NAME || !UPLOAD_PRESET) {
@@ -151,71 +120,76 @@ const uploadImageToCloudinary = async () => {
   } catch (e) {
     isImageUploading.value = false;
     localError.value = `Error al subir la imagen: ${e.message || 'Error desconocido.'}`;
-    throw e;
+    throw e; // Relanzamos para detener la creación
   }
 };
 
 
 // --- GESTIÓN DEL FORMULARIO ---
 
-const handleUpdate = async () => {
+const handleCreate = async () => {
   localError.value = "";
-  roomStore.errors = [];
+  roomStore.errors = []; // Limpiar errores de la store
 
   if (isFormInvalid.value || isNaN(form.value.hotelId)) {
     localError.value = "Por favor, completa todos los campos requeridos.";
     return;
   }
 
-  // 1. GESTIONAR SUBIDA DE IMAGEN (Solo si hay archivo nuevo)
-  let finalImageUrl = form.value.imagen || initialImageUrl.value;
+  // 1. GESTIONAR SUBIDA DE IMAGEN
+  let finalImageUrl = form.value.imagen;
 
   if (imageFile.value) {
     try {
       finalImageUrl = await uploadImageToCloudinary();
     } catch (e) {
-      return;
+      // El error ya se setea en localError
+      return; // Detener si la subida falla
     }
+
+    // Limpiar el archivo después de la subida
     imageFile.value = null;
     if (fileInput.value) {
       fileInput.value.value = null;
     }
   }
 
-  // 2. CONSTRUCCIÓN FINAL DEL PAYLOAD
+  // 2. CONSTRUCCIÓN FINAL
   const roomData = {
-    // ✅ CORRECCIÓN: Se agrega el ID de la habitación al cuerpo de la petición (payload)
-    id: roomIdFromRoute,
-    imagen: finalImageUrl,
+    imagen: finalImageUrl, // Usar la URL obtenida (subida o manual)
     type: form.value.type,
     price: form.value.price,
     hotelId: form.value.hotelId,
   };
 
-  // 💡 LOG DE DEBUGGING AQUÍ
-  console.log("--- DEBUG: Payload enviado a roomStore.updateRoom (CORREGIDO) ---");
-  console.log("Room ID (Ruta):", roomIdFromRoute);
-  console.log("Datos (roomData):", roomData);
-  console.log("------------------------------------------------------------------");
-
-  // 3. Actualizar la habitación usando la store
-  const ok = await roomStore.updateRoom(roomIdFromRoute, roomData);
+  // 3. Crear la habitación usando la store
+  const ok = await roomStore.createRoom(roomData);
 
   if (ok) {
     toast.add({
       severity: 'success',
-      summary: 'Actualizada',
-      detail: "Habitación modificada correctamente. Redirigiendo...",
+      summary: 'Creada',
+      detail: "Habitación creada correctamente. Redirigiendo...",
       life: 2500
     });
 
+    // Limpiar el formulario
+    form.value = {
+      imagen: "",
+      type: "",
+      price: 0,
+      hotelId: form.value.hotelId // Mantener el hotelId
+    };
+
+    // Redirigir a la lista de habitaciones de este hotel
     setTimeout(() => {
       router.push("/rooms");
     }, 1500);
 
   } else {
-    const storeError = roomStore.errors.length > 0 ? roomStore.errors[0] : "Error desconocido al modificar la habitación.";
-    localError.value = `No se pudo actualizar la habitación: ${storeError}`;
+    // Si falla el store, mostramos el error de la store
+    const storeError = roomStore.errors.length > 0 ? roomStore.errors[0] : "Error desconocido al crear la habitación.";
+    localError.value = `No se pudo crear la habitación: ${storeError}`;
     toast.add({severity: 'error', summary: 'Error de API', detail: localError.value, life: 5000});
   }
 };
@@ -224,15 +198,15 @@ const goBack = () => router.push("/rooms");
 </script>
 
 <template>
-  <div class="edit-page-container">
+  <div class="create-page-container">
     <div class="form-card-wrapper">
-      <pv-card class="edit-form-card">
+      <pv-card class="create-form-card">
         <pv-toast position="top-right"/>
 
         <template #title>
           <div class="card-title-header">
-            <i class="pi pi-pencil card-title-icon"></i>
-            Editar Habitación (ID: {{ roomIdFromRoute }})
+            <i class="pi pi-plus-circle card-title-icon"></i>
+            Añadir Nueva Habitación
           </div>
         </template>
 
@@ -241,13 +215,7 @@ const goBack = () => router.push("/rooms");
         </template>
 
         <template #content>
-
-          <div v-if="roomStore.loading && !roomStore.currentRoom" class="text-center p-4">
-            <i class="pi pi-spin pi-spinner text-3xl text-blue-500"></i>
-            <p class="mt-2 text-gray-600">Cargando datos de la habitación...</p>
-          </div>
-
-          <form v-else @submit.prevent="handleUpdate" class="edit-form">
+          <form @submit.prevent="handleCreate" class="create-form">
 
             <div class="feedback-messages">
               <pv-message v-if="localError" severity="error" :closable="false">{{ localError }}</pv-message>
@@ -256,9 +224,6 @@ const goBack = () => router.push("/rooms");
               </pv-message>
             </div>
 
-            <pv-divider align="center" type="dashed">
-              <span class="p-tag">Datos de la Habitación</span>
-            </pv-divider>
 
             <div class="form-field-group">
               <label for="room-type" class="font-bold block mb-2">Tipo de Habitación</label>
@@ -291,23 +256,9 @@ const goBack = () => router.push("/rooms");
               />
             </div>
 
-            <pv-divider align="center" type="dashed">
-              <span class="p-tag">Imagen Actual y Modificación</span>
-            </pv-divider>
-
-            <div class="current-image-preview">
-              <p class="text-sm font-bold text-gray-700 mb-2">Imagen Actual:</p>
-              <img
-                  :src="initialImageUrl || 'https://via.placeholder.com/250x150?text=No+Image'"
-                  alt="Imagen Actual de la Habitación"
-                  class="current-image"
-              />
-            </div>
-
-
             <div class="form-field-group">
               <label for="images-upload" class="image-upload-label">
-                Modificar URL o Subir Nuevo Archivo
+                URL de Imagen o Subir Archivo
               </label>
 
               <pv-float-label>
@@ -315,10 +266,10 @@ const goBack = () => router.push("/rooms");
                     id="imagen"
                     v-model="form.imagen"
                     :disabled="isSubmitting || !!imageFile || isImageUploading"
-                    placeholder="Pega la nueva URL aquí"
+                    placeholder="Pega una URL (si no subes archivo)"
                     class="full-width-input"
                 />
-                <label for="imagen">URL Manual (Campo 'imagen')</label>
+                <label for="imagen">URL de Imagen (Campo 'imagen')</label>
               </pv-float-label>
 
               <div class="text-center my-2 text-gray-500 text-sm font-semibold">O</div>
@@ -334,13 +285,10 @@ const goBack = () => router.push("/rooms");
               />
 
               <small v-if="imageFile" class="p-error block mt-1">
-                Archivo seleccionado: {{ imageFile.name }}. Se subirá al actualizar.
+                Archivo seleccionado: {{ imageFile.name }}. Se subirá al crear.
               </small>
               <small v-else-if="form.imagen" class="text-green-600 block mt-1">
                 Usando URL manual.
-              </small>
-              <small v-else-if="initialImageUrl" class="text-gray-600 block mt-1">
-                Manteniendo la imagen original.
               </small>
               <small v-if="isImageUploading" class="text-blue-500 block mt-1">
                 <i class="pi pi-spin pi-spinner mr-2"></i>Subiendo imagen...
@@ -361,8 +309,8 @@ const goBack = () => router.push("/rooms");
               />
               <pv-button
                   type="submit"
-                  label="Guardar Cambios"
-                  icon="pi pi-save"
+                  label="Crear Habitación"
+                  icon="pi pi-check"
                   class="p-button-primary"
                   :loading="isSubmitting"
                   :disabled="isFormInvalid"
@@ -378,7 +326,8 @@ const goBack = () => router.push("/rooms");
 </template>
 
 <style scoped>
-.edit-page-container {
+/* Tu CSS para estilos se mantiene igual, ya que la estructura HTML es similar */
+.create-page-container {
   padding: 2rem;
   min-height: 90vh;
   background-color: #f8f9fa;
@@ -389,10 +338,10 @@ const goBack = () => router.push("/rooms");
 
 .form-card-wrapper {
   width: 100%;
-  max-width: 35rem;
+  max-width: 30rem;
 }
 
-.edit-form-card {
+.create-form-card {
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
   border-radius: 0.75rem;
   background-color: #ffffff;
@@ -410,15 +359,15 @@ const goBack = () => router.push("/rooms");
 
 .card-title-icon {
   margin-right: 0.75rem;
-  color: #007bff;
+  color: #28a745;
   font-size: 1.25rem;
 }
 
-.edit-form-card :deep(.p-card-content) {
+.create-form-card :deep(.p-card-content) {
   padding-top: 1.5rem;
 }
 
-.edit-form {
+.create-form {
   display: grid;
   gap: 1.5rem;
 }
@@ -463,24 +412,5 @@ const goBack = () => router.push("/rooms");
   margin-bottom: 1rem;
   display: grid;
   gap: 0.5rem;
-}
-
-/* Estilos de previsualización de imagen */
-.current-image-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding: 10px;
-  border: 1px dashed #ced4da;
-  border-radius: 6px;
-}
-
-.current-image {
-  max-width: 250px;
-  height: auto;
-  object-fit: cover;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>

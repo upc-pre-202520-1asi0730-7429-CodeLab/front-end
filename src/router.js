@@ -9,6 +9,9 @@ import EliminarHotel from "./hostelmanagers/Hotel/presentation/views/eliminar.ho
 import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.hotel.vue";
 import PageNotFound from "./shared/presentation/views/page-not-found.vue";
 import SiderbarContent from "./shared/presentation/components/siderbar-content.vue";
+import RoomListView from "./hostelmanagers/Room/Presentation/Views/RoomListView.vue";
+import CreateRoom from "./hostelmanagers/Room/Presentation/Views/CreateRoom.vue";
+import EditRoomView from "./hostelmanagers/Room/Presentation/Views/EditRoomView.vue";
 // The following line caused the SyntaxError and has been removed:
 // import {routes} from "vue-router/auto-routes";
 
@@ -53,6 +56,23 @@ const router = createRouter({
                     path: "/hotels/delete",
                     name: "delete-hotel",
                     component: EliminarHotel,
+                },
+                {
+                    path: "/rooms",
+                    name: "Rooms",
+                    component: RoomListView,
+                },
+                {
+                    path: "/rooms/create/:hotelId",
+                    name: "CreateRooms",
+                    component: CreateRoom,
+                    props: true,
+                },
+                {
+                    path: '/rooms/:hotelId/edit/:id',
+                    name: 'edit-room',
+                    component: EditRoomView,
+                    props: true
                 },
 
                 ]
