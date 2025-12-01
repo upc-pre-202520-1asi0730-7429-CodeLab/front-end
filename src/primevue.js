@@ -1,8 +1,10 @@
+// src/plugins/primevue.js
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
 import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css';
 
+// Componentes de PrimeVue
 import Button from 'primevue/button';
 import SelectButton from 'primevue/selectbutton';
 import FloatLabel from 'primevue/floatlabel';
@@ -14,20 +16,35 @@ import Textarea from 'primevue/textarea';
 import InputNumber from 'primevue/inputnumber';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import ColumnGroup from 'primevue/columngroup';
+import Row from 'primevue/row';
 import Panel from 'primevue/panel';
 import Calendar from 'primevue/calendar';
 import InputMask from 'primevue/inputmask';
 import ProgressSpinner from 'primevue/progressspinner';
 import Sidebar from 'primevue/sidebar';
-import {Select} from "primevue";
+import Card from 'primevue/card';
+import Dialog from 'primevue/dialog';
+import Toast from 'primevue/toast';
+import ToastService from 'primevue/toastservice';
+import Badge from 'primevue/badge';
+import BadgeDirective from 'primevue/badgedirective';
 
 export default (app) => {
     app.use(PrimeVue, {
         theme: {
-            preset: Aura
+            preset: Aura,
+            options: {
+                prefix: 'p',
+                darkModeSelector: '.app-dark',
+                cssLayer: false
+            }
         }
-    })
+    });
 
+    app.use(ToastService);
+
+    // Registro de componentes
     app.component('pv-button', Button);
     app.component('pv-select-button', SelectButton);
     app.component('pv-float-label', FloatLabel);
@@ -39,10 +56,18 @@ export default (app) => {
     app.component('pv-input-number', InputNumber);
     app.component('pv-data-table', DataTable);
     app.component('pv-column', Column);
+    app.component('pv-column-group', ColumnGroup);
+    app.component('pv-row', Row);
     app.component('pv-panel', Panel);
     app.component('pv-calendar', Calendar);
     app.component('pv-input-mask', InputMask);
     app.component('pv-progress-spinner', ProgressSpinner);
     app.component('pv-sidebar', Sidebar);
-    app.component('pv-select', Panel);
-}
+    app.component('pv-card', Card);
+    app.component('pv-dialog', Dialog);
+    app.component('pv-toast', Toast);
+    app.component('pv-badge', Badge);
+
+    // Directivas
+    app.directive('badge', BadgeDirective);
+};
