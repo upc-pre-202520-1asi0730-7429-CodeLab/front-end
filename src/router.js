@@ -1,3 +1,4 @@
+
 import { createRouter, createWebHistory } from "vue-router";
 import MainLayout from "./shared/presentation/components/layout.vue";
 import Login from "./hostelmanagers/IAM/presentation/views/login.vue";
@@ -7,67 +8,63 @@ import UpdateHotel from "./hostelmanagers/Hotel/presentation/views/actualizar.ho
 import EliminarHotel from "./hostelmanagers/Hotel/presentation/views/eliminar.hotel.vue";
 import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.hotel.vue";
 import PageNotFound from "./shared/presentation/views/page-not-found.vue";
-
-const routes = [
-    {
-        path: "/",
-        component: MainLayout,
-        children: [
-            {
-                path: "",
-                name: "home",
-                component: Login,
-                meta: { title: "Login", public: true }
-            },
-            {
-                path: "login",
-                name: "login",
-                component: Login,
-                meta: { title: "Login", public: true }
-            },
-            {
-                path: "register",
-                name: "register",
-                component: Register,
-                meta: { title: "Register", public: true }
-            },
-            {
-                path: "hotels",
-                name: "show-hotels",
-                component: MostrarHoteles,
-                meta: { title: "Show", public: true }
-            },
-            {
-                path: "hotels/create",
-                name: "create-hotel",
-                component: CreateHotel,
-                meta: { title: "Create", public: true }
-            },
-            {
-                path: "hotels/:id/edit",
-                name: "update-hotel",
-                component: UpdateHotel,
-                meta: { title: "Update", public: true }
-            },
-            {
-                path: "hotels/delete",
-                name: "delete-hotel",
-                component: EliminarHotel,
-                meta: { title: "Delete", public: true }
-            }
-        ]
-    },
-    {
-        path: "/:pathMatch(.*)*",
-        name: "not-found",
-        component: PageNotFound,
-        meta: { title: "Página no encontrada", public: true }
-    }
-];
+import SiderbarContent from "./shared/presentation/components/siderbar-content.vue";
+// The following line caused the SyntaxError and has been removed:
+// import {routes} from "vue-router/auto-routes";
 
 const router = createRouter({
-    history: createWebHistory(import.meta.env.BASE_URL),
-    routes
+    history: createWebHistory(),
+    routes: [
+
+        {
+            path: "/login",
+            name: "login",
+            component: Login,
+            meta: { title: "Login", public: true }
+        },
+        {
+            path: "/register",
+            name: "register",
+            component: Register,
+            meta: { title: "Register", public: true }
+        },
+
+        {
+            path: "/sidebar",
+            name: "Sidebar",
+            component: SiderbarContent,
+            children: [
+                {
+                    path: "/hotels",
+                    name: "show-hotels",
+                    component: MostrarHoteles,
+                },
+                {
+                    path: "/hotels/create",
+                    name: "create-hotel",
+                    component: CreateHotel,
+                },
+                {
+                    path: "/hotels/:id/edit",
+                    name: "update-hotel",
+                    component: UpdateHotel,
+                },
+                {
+                    path: "/hotels/delete",
+                    name: "delete-hotel",
+                    component: EliminarHotel,
+                },
+
+                ]
+        },
+        {
+            path: '/:pathMatch(.*)*',
+            name: 'NotFound',
+            component: PageNotFound
+        }
+
+
+    ]
 });
 
 export default router;

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import { RouterView } from 'vue-router'; // Importar RouterView explícitamente
 import useUserStore from '../../../hostelmanagers/IAM/application/user.store.js';
 
 const userStore = useUserStore();
@@ -10,35 +11,14 @@ onMounted(() => {
   if (userJson) {
     try {
       const userData = JSON.parse(userJson);
-      console.log("Usuario cargado en sidebar:", userData);
-      // Asignar al store si no existe
       if (!userStore.currentUser) {
         userStore.currentUser = userData;
       }
     } catch (e) {
       console.error('Error al parsear usuario:', e);
-      localStorage.removeItem('currentUser'); // Limpiar si hay error
+      localStorage.removeItem('currentUser');
     }
   }
-});
-
-// Observar cambios en el usuario
-watch(() => userStore.currentUser, (newUser) => {
-  console.log("Usuario cambió en sidebar:", newUser);
-}, { deep: true });
-
-const isOwner = computed(() => {
-  const user = userStore.currentUser;
-  const isOwnerType = user && user.type_user === 'owner';
-  console.log("¿Es owner?", isOwnerType, user?.type_user);
-  return isOwnerType;
-});
-
-const isVisitor = computed(() => {
-  const user = userStore.currentUser;
-  const isVisitorType = user && user.type_user === 'visitor';
-  console.log("¿Es visitor?", isVisitorType, user?.type_user);
-  return isVisitorType;
 });
 
 const handleLogout = () => {
@@ -48,90 +28,97 @@ const handleLogout = () => {
 </script>
 
 <template>
-  <aside class="sidebar">
-    <div class="sidebar-title">
-      <h3>Menú Principal</h3>
-      <small v-if="userStore.currentUser">
-        Usuario: {{ userStore.currentUser.name }} ({{ userStore.currentUser.type_user }})
-      </small>
-    </div>
+  <div class="layout-con-sidebar">
 
-    <nav>
-      <ul class="menu-list">
-        <!-- Opciones para propietarios (owners) -->
-        <template v-if="isOwner">
-          <li>
-            <RouterLink to="/hotels" class="menu-item">
-              <i class="pi pi-building"></i>
-              <span>Mis Hoteles</span>
-            </RouterLink>
-          </li>
-          <li>
-            <RouterLink to="/rooms" class="menu-item">
-              <i class="pi pi-home"></i>
-              <span>Mis Habitaciones</span>
-            </RouterLink>
-          </li>
-          <li>
-            <RouterLink to="/reservations" class="menu-item">
-              <i class="pi pi-calendar"></i>
-              <span>Reservaciones</span>
-            </RouterLink>
-          </li>
-          <li>
-            <RouterLink to="/subscriptions" class="menu-item">
-              <i class="pi pi-credit-card"></i>
-              <span>Mi Suscripción</span>
-            </RouterLink>
-          </li>
-        </template>
+    <aside class="sidebar">
+      <div class="sidebar-title">
+        <h3>Menú Principal</h3>
+        <small v-if="userStore.currentUser">
+          Usuario: {{ userStore.currentUser.username }}
+        </small>
+      </div>
 
-        <!-- Opciones para visitantes (visitors) -->
-        <template v-if="isVisitor">
-          <li>
-            <RouterLink to="/hotels" class="menu-item">
-              <i class="pi pi-search"></i>
-              <span>Buscar Hoteles</span>
-            </RouterLink>
-          </li>
-          <li>
-            <RouterLink to="/reservations" class="menu-item">
-              <i class="pi pi-calendar"></i>
-              <span>Mis Reservas</span>
-            </RouterLink>
-          </li>
-        </template>
+      <nav>
+        <ul class="menu-list">
+          <template v-if="userStore.currentUser">
 
-        <!-- Opciones comunes para todos los usuarios autenticados -->
-        <template v-if="userStore.currentUser">
-          <li class="menu-separator"></li>
-          <li>
-            <RouterLink to="/profile" class="menu-item">
-              <i class="pi pi-user"></i>
-              <span>Mi Perfil</span>
-            </RouterLink>
-          </li>
-          <li>
-            <a href="#" @click.prevent="handleLogout" class="menu-item logout">
-              <i class="pi pi-sign-out"></i>
-              <span>Cerrar Sesión</span>
-            </a>
-          </li>
-        </template>
-      </ul>
-    </nav>
-  </aside>
+            <li>
+              <RouterLink to="/hotels" class="menu-item">
+                <i class="pi pi-building"></i>
+                <span>Mis Hoteles / Buscar Hoteles</span>
+              </RouterLink>
+            </li>
+
+            <li>
+              <RouterLink to="/rooms" class="menu-item">
+                <i class="pi pi-home"></i>
+                <span>Mis Habitaciones</span>
+              </RouterLink>
+            </li>
+
+            <li>
+              <RouterLink to="/reservations" class="menu-item">
+                <i class="pi pi-calendar"></i>
+                <span>Reservas</span>
+              </RouterLink>
+            </li>
+
+            <li>
+              <RouterLink to="/subscriptions" class="menu-item">
+                <i class="pi pi-credit-card"></i>
+                <span>Mi Suscripción</span>
+              </RouterLink>
+            </li>
+
+            <li class="menu-separator"></li>
+
+            <li>
+              <RouterLink to="/profile" class="menu-item">
+                <i class="pi pi-user"></i>
+                <span>Mi Perfil</span>
+              </RouterLink>
+            </li>
+            <li>
+              <a href="#" @click.prevent="handleLogout" class="menu-item logout">
+                <i class="pi pi-sign-out"></i>
+                <span>Cerrar Sesión</span>
+              </a>
+            </li>
+          </template>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="content-wrapper">
+      <RouterView /> </main>
+
+  </div>
 </template>
 
 <style scoped>
+/* 🛑 ESTILOS NUEVOS PARA EL LAYOUT (Horizontal) */
+.layout-con-sidebar {
+  display: flex; /* Habilita la disposición horizontal */
+  width: 100%;
+  min-height: 100vh;
+}
+
 .sidebar {
   width: 240px;
   min-height: 100vh;
   background-color: #f8f9fa;
   border-right: 1px solid #dee2e6;
   padding: 0;
+  flex-shrink: 0; /* Evita que el sidebar se comprima */
 }
 
+.content-wrapper {
+  flex-grow: 1; /* Permite que el contenido ocupe el resto del espacio */
+  padding: 20px;
+  overflow-y: auto; /* Permite desplazamiento si el contenido es largo */
+}
+
+/* Estilos existentes para el menú del sidebar (mantenerlos) */
 .sidebar-title {
   padding: 1.5rem 1rem;
   border-bottom: 1px solid #dee2e6;

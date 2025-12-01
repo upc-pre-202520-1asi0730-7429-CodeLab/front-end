@@ -1,3 +1,5 @@
+// Archivo: src/application/hotel.store.js
+
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { HotelsApi } from "../infrastructure/hotel-api.js";
@@ -52,11 +54,14 @@ const useHotelStore = defineStore("hotels", () => {
         }
     };
 
-    const updateHotel = async (id, { name, images, address, phone, userId }) => {
+    // ✅ CORRECCIÓN: Ahora recibe 'id' (para la URL) y 'resource' (el objeto completo con el ID incluido).
+    const updateHotel = async (id, resource) => {
         loading.value = true;
         errors.value = [];
         try {
-            await api.updateHotel(id, { name, images, address, phone, userId });
+            // El componente asegura que 'resource' ya contiene { id, name, images, ... }
+            await api.updateHotel(id, resource);
+
             await fetchHotels();
             return true;
         } catch (err) {

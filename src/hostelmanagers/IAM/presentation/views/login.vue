@@ -33,7 +33,7 @@ const handleLogin = async () => {
 
     if (success) {
       // 3. Redirección exitosa
-      router.push({ name: "create-hotel" });
+      router.push("/sidebar");
     } else {
       // 4. Mensaje de error si las credenciales fallan
       error.value = "Credenciales incorrectas. Verifica tu usuario y contraseña.";
