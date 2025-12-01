@@ -1,3 +1,4 @@
+// rooms/infrastructure/room-api.js
 import { BaseApi } from "../../../shared/infrastructure/base-api.js";
 import { BaseEndpoint } from "../../../shared/infrastructure/base-endpoint.js";
 

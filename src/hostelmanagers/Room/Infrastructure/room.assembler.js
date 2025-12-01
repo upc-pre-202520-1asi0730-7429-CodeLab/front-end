@@ -1,5 +1,5 @@
 // rooms/infrastructure/room.assembler.js
-import { Room } from "../domain/model/room.entity.js";
+import {Room} from "../Domain/Model/room.entity.js";
 
 export class RoomsAssembler {
     static toEntityFromResource(resource) {

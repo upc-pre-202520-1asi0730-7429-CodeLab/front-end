@@ -1,12 +1,12 @@
 // rooms/application/room.store.js
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { RoomsApi } from "../infrastructure/room-api.js";
-import { RoomsAssembler } from "../infrastructure/room.assembler.js";
+import {RoomsApi} from "../Infrastructure/room-api.js";
+import {RoomsAssembler} from "../Infrastructure/room.assembler.js";
 
 const api = new RoomsApi();
 
-export const useRoomStore = defineStore("rooms", () => {
+const useRoomStore = defineStore("rooms", () => {
     const rooms = ref([]);
     const currentRoom = ref(null);
     const loading = ref(false);
@@ -51,12 +51,11 @@ export const useRoomStore = defineStore("rooms", () => {
         }
     };
 
-    const createRoom = async (roomData) => {
+    const createRoom = async ({ image, type, price, hotelId, isAvailable }) => {
         loading.value = true;
         errors.value = [];
         try {
-            await api.createRoom(roomData);
-            await fetchRoomsByHotelId(roomData.hotelId);
+            await api.createRoom({ image, type, price, hotelId, isAvailable });
             return true;
         } catch (err) {
             errors.value.push(err);
@@ -66,12 +65,11 @@ export const useRoomStore = defineStore("rooms", () => {
         }
     };
 
-    const updateRoom = async (id, roomData) => {
+    const updateRoom = async (id, { image, type, price, hotelId, isAvailable }) => {
         loading.value = true;
         errors.value = [];
         try {
-            await api.updateRoom(id, roomData);
-            await fetchRoomsByHotelId(roomData.hotelId);
+            await api.updateRoom(id, { image, type, price, hotelId, isAvailable });
             return true;
         } catch (err) {
             errors.value.push(err);
@@ -85,9 +83,7 @@ export const useRoomStore = defineStore("rooms", () => {
         loading.value = true;
         errors.value = [];
         try {
-            const roomToDelete = rooms.value.find(r => r.id === id);
             await api.deleteRoom(id);
-            await fetchRoomsByHotelId(roomToDelete.hotelId);
             return true;
         } catch (err) {
             errors.value.push(err);
@@ -110,3 +106,5 @@ export const useRoomStore = defineStore("rooms", () => {
         deleteRoom
     };
 });
+
+export default useRoomStore;

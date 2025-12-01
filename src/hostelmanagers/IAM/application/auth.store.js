@@ -1,17 +1,43 @@
 // src/hostelmanagers/IAM/application/auth.store.js
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { UsersApi } from "../infrastructure/user-api.js";
-import { UsersAssembler } from "../infrastructure/user.assembler.js";
-import {router} from "json-server";
 
 const usersApi = new UsersApi();
 
 export const useAuthStore = defineStore("auth", () => {
-    const user = ref(JSON.parse(localStorage.getItem("currentUser")) || null);
-    const token = ref(localStorage.getItem("token") || null);
+    const user = ref(null);
+    const token = ref(null);
     const loading = ref(false);
     const errors = ref([]);
+
+    // Inicializar desde localStorage al crear el store
+    const initializeAuth = () => {
+        const storedToken = localStorage.getItem("token");
+        const storedUser = localStorage.getItem("currentUser");
+
+        if (storedToken) {
+            token.value = storedToken;
+        }
+
+        if (storedUser) {
+            try {
+                user.value = JSON.parse(storedUser);
+            } catch (e) {
+                console.error("Error parsing stored user:", e);
+                localStorage.removeItem("currentUser");
+            }
+        }
+    };
+
+    // Ejecutar inicialización
+    initializeAuth();
+
+    // Computed properties
+    const isAuthenticated = computed(() => !!token.value && !!user.value);
+    const isAdmin = computed(() => user.value?.roles === "Admin");
+    const isClient = computed(() => user.value?.roles === "Client");
+    const currentUser = computed(() => user.value);
 
     const login = async ({ username, password }) => {
         loading.value = true;
@@ -20,17 +46,30 @@ export const useAuthStore = defineStore("auth", () => {
         try {
             const response = await usersApi.signIn({ username, password });
 
-            // Asumiendo que la respuesta tiene el formato { token, user }
-            token.value = response.data.token;
-            user.value = UsersAssembler.toEntityFromResource(response.data.user);
+            // Extraer los datos de la respuesta
+            const { token: accessToken, id, username: uname, names, roles } = response.data;
+
+            // Crear objeto de usuario completo
+            const userData = {
+                id,
+                username: uname,
+                names: names || uname,
+                roles: roles || "Client"
+            };
+
+            token.value = accessToken;
+            user.value = userData;
 
             // Guardar en localStorage
-            localStorage.setItem("token", token.value);
-            localStorage.setItem("currentUser", JSON.stringify(user.value));
+            localStorage.setItem("token", accessToken);
+            localStorage.setItem("currentUser", JSON.stringify(userData));
 
+            console.log("Login successful:", userData);
             return true;
         } catch (err) {
-            errors.value.push(err.message || "Error de autenticación");
+            const errorMessage = err.response?.data?.message || err.message || "Authentication error";
+            errors.value.push(errorMessage);
+            console.error("Login error:", err);
             return false;
         } finally {
             loading.value = false;
@@ -42,7 +81,7 @@ export const useAuthStore = defineStore("auth", () => {
         user.value = null;
         localStorage.removeItem("token");
         localStorage.removeItem("currentUser");
-        router.push({ name: "login" });
+        console.log("Logout successful");
     };
 
     const register = async ({ username, password, names, roles }) => {
@@ -57,40 +96,42 @@ export const useAuthStore = defineStore("auth", () => {
                 roles
             });
 
+            console.log("Registration successful");
             return true;
         } catch (err) {
-            errors.value.push(err.message || "Error al registrar usuario");
+            const errorMessage = err.response?.data?.message || err.message || "Registration error";
+            errors.value.push(errorMessage);
+            console.error("Register error:", err);
             return false;
         } finally {
             loading.value = false;
         }
     };
 
-    // Obtener usuario actual
-    const currentUser = () => {
-        return user.value;
-    };
-
-    // Verificar si el usuario tiene un rol específico
-    const hasRole = (role) => {
-        return user.value?.roles === role;
-    };
-
-    // Verificar si el usuario está autenticado
-    const isAuthenticated = () => {
-        return !!token.value;
+    const clearErrors = () => {
+        errors.value = [];
     };
 
     return {
+        // State
         user,
         token,
         loading,
         errors,
+
+        // Computed
+        currentUser,
+        isAuthenticated,
+        isAdmin,
+        isClient,
+
+        // Actions
         login,
         logout,
         register,
-        currentUser,
-        hasRole,
-        isAuthenticated
+        clearErrors
     };
 });
+
+// Export default para compatibilidad
+export default useAuthStore;

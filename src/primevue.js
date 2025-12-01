@@ -1,4 +1,4 @@
-// src/plugins/primevue.js
+// src/primevue.js
 import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
 import 'primeflex/primeflex.css';
@@ -29,6 +29,13 @@ import Toast from 'primevue/toast';
 import ToastService from 'primevue/toastservice';
 import Badge from 'primevue/badge';
 import BadgeDirective from 'primevue/badgedirective';
+import Tag from 'primevue/tag'; // NUEVO
+import TabView from 'primevue/tabview'; // NUEVO
+import TabPanel from 'primevue/tabpanel'; // NUEVO
+import Select from 'primevue/select'; // NUEVO
+import Checkbox from 'primevue/checkbox'; // NUEVO
+import ConfirmationService from 'primevue/confirmationservice'; // NUEVO
+import ConfirmDialog from 'primevue/confirmdialog'; // NUEVO
 
 export default (app) => {
     app.use(PrimeVue, {
@@ -43,6 +50,7 @@ export default (app) => {
     });
 
     app.use(ToastService);
+    app.use(ConfirmationService);
 
     // Registro de componentes
     app.component('pv-button', Button);
@@ -67,6 +75,12 @@ export default (app) => {
     app.component('pv-dialog', Dialog);
     app.component('pv-toast', Toast);
     app.component('pv-badge', Badge);
+    app.component('pv-tag', Tag); // NUEVO
+    app.component('pv-tab-view', TabView); // NUEVO
+    app.component('pv-tab-panel', TabPanel); // NUEVO
+    app.component('pv-select', Select); // NUEVO
+    app.component('pv-checkbox', Checkbox); // NUEVO
+    app.component('pv-confirm-dialog', ConfirmDialog); // NUEVO
 
     // Directivas
     app.directive('badge', BadgeDirective);

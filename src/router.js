@@ -1,35 +1,41 @@
+// router.js
 import { createRouter, createWebHistory } from "vue-router";
-import { useAuthStore } from "./hostelmanagers/IAM/application/auth.store.js";
 import MainLayout from "./shared/presentation/components/layout.vue";
+
+// IAM Views
 import Login from "./hostelmanagers/IAM/presentation/views/login.vue";
 import Register from "./hostelmanagers/IAM/presentation/views/register.vue";
+
+// Hotel Views - Admin
+import AdminDashboard from "./hostelmanagers/Hotel/presentation/views/admin-dashboard.vue";
+import AdminHotelDetail from "./hostelmanagers/Hotel/presentation/views/admin-hotel-detail.vue";
 import CreateHotel from "./hostelmanagers/Hotel/presentation/views/create.hotel.vue";
 import UpdateHotel from "./hostelmanagers/Hotel/presentation/views/actualizar.hotel.vue";
 import EliminarHotel from "./hostelmanagers/Hotel/presentation/views/eliminar.hotel.vue";
 import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.hotel.vue";
+
+// Hotel Views - Guest
+
+// Room Views
+import GuestHotelRooms from "./hostelmanagers/Room/presentation/views/guest-hotel-rooms.vue";
+
+// Reservation Views
+import AdminReservations from "./hostelmanagers/Reservation/presentation/views/admin-reservations.vue";
+import GuestReservations from "./hostelmanagers/Reservation/presentation/views/guest-reservations.vue";
+
+// Shared
 import PageNotFound from "./shared/presentation/views/page-not-found.vue";
-
-// Importar vistas de Habitaciones
-import RoomListView from "./hostelmanagers/Room/presentation/views/RoomListView.vue";
-import CreateRoomView from "./hostelmanagers/Room/presentation/views/CreateRoomDialog.vue";
-import EditRoomView from "./hostelmanagers/Room/presentation/views/EditRoomView.vue";
-
-// Importar vistas de Reservas
-import CreateBookingView from "./hostelmanagers/Booking/presentation/views/CreateBookingView.vue";
-import MyBookingsView from "./hostelmanagers/Booking/presentation/views/MyBookingsView.vue";
-import HotelBookingsView from "./hostelmanagers/Booking/presentation/views/HotelBookingsView.vue";
-import BookingDetailsView from "./hostelmanagers/Booking/presentation/views/BookingDetailsView.vue";
+import useAuthStore from "./hostelmanagers/IAM/application/auth.store.js";
 
 const routes = [
     {
         path: "/",
         component: MainLayout,
         children: [
+            // Public Routes
             {
                 path: "",
-                name: "home",
-                component: MostrarHoteles,
-                meta: { title: "Hoteles", public: false }
+                redirect: "/login"
             },
             {
                 path: "login",
@@ -43,73 +49,109 @@ const routes = [
                 component: Register,
                 meta: { title: "Register", public: true }
             },
+
+            // Admin Routes
             {
-                path: "hotels",
-                name: "show-hotels",
-                component: MostrarHoteles,
-                meta: { title: "Hoteles", public: false }
+                path: "admin/dashboard",
+                name: "admin-dashboard",
+                component: AdminDashboard,
+                meta: {
+                    title: "Admin Dashboard",
+                    requiresAuth: true,
+                    role: "Admin"
+                }
             },
             {
-                path: "hotels/create",
-                name: "create-hotel",
+                path: "admin/hotel/create",
+                name: "admin-create-hotel",
                 component: CreateHotel,
-                meta: { title: "Crear Hotel", public: false, requiresAdmin: true }
+                meta: {
+                    title: "Create Hotel",
+                    requiresAuth: true,
+                    role: "Admin"
+                }
             },
             {
-                path: "hotels/:id/edit",
-                name: "update-hotel",
+                path: "admin/hotel/:id",
+                name: "admin-hotel-detail",
+                component: AdminHotelDetail,
+                meta: {
+                    title: "Hotel Detail",
+                    requiresAuth: true,
+                    role: "Admin"
+                }
+            },
+            {
+                path: "admin/hotel/:id/edit",
+                name: "admin-update-hotel",
                 component: UpdateHotel,
-                meta: { title: "Editar Hotel", public: false, requiresAdmin: true }
+                meta: {
+                    title: "Update Hotel",
+                    requiresAuth: true,
+                    role: "Admin"
+                }
             },
             {
-                path: "hotels/delete",
-                name: "delete-hotel",
+                path: "admin/hotel/delete",
+                name: "admin-delete-hotel",
                 component: EliminarHotel,
-                meta: { title: "Eliminar Hotel", public: false, requiresAdmin: true }
-            },
-            // Rutas para Habitaciones
-            {
-                path: "hotels/:hotelId/rooms",
-                name: "hotel-rooms",
-                component: RoomListView,
-                meta: { title: "Habitaciones", public: false }
+                meta: {
+                    title: "Delete Hotel",
+                    requiresAuth: true,
+                    role: "Admin"
+                }
             },
             {
-                path: "hotels/:hotelId/rooms/create",
-                name: "create-room",
-                component: CreateRoomView,
-                meta: { title: "Crear Habitación", public: false, requiresAdmin: true }
+                path: "admin/hotels",
+                name: "admin-show-hotels",
+                component: MostrarHoteles,
+                meta: {
+                    title: "Show Hotels",
+                    requiresAuth: true,
+                    role: "Admin"
+                }
             },
             {
-                path: "rooms/:id/edit",
-                name: "edit-room",
-                component: EditRoomView,
-                meta: { title: "Editar Habitación", public: false, requiresAdmin: true }
+                path: "admin/hotel/:hotelId/reservations",
+                name: "admin-reservations",
+                component: AdminReservations,
+                meta: {
+                    title: "Reservations Management",
+                    requiresAuth: true,
+                    role: "Admin"
+                }
             },
-            // Rutas para Reservas
+
+            // Guest Routes
             {
-                path: "rooms/:roomId/booking",
-                name: "create-booking",
-                component: CreateBookingView,
-                meta: { title: "Nueva Reserva", public: false, requiresClient: true }
-            },
-            {
-                path: "my-bookings",
-                name: "my-bookings",
-                component: MyBookingsView,
-                meta: { title: "Mis Reservas", public: false, requiresClient: true }
-            },
-            {
-                path: "hotels/:hotelId/bookings",
-                name: "hotel-bookings",
-                component: HotelBookingsView,
-                meta: { title: "Reservas del Hotel", public: false, requiresAdmin: true }
+                path: "guest/hotels",
+                name: "guest-hotels",
+                component: GuestHotels,
+                meta: {
+                    title: "Available Hotels",
+                    requiresAuth: true,
+                    role: "Client"
+                }
             },
             {
-                path: "bookings/:id",
-                name: "booking-details",
-                component: BookingDetailsView,
-                meta: { title: "Detalles de Reserva", public: false }
+                path: "guest/hotel/:hotelId/rooms",
+                name: "guest-hotel-rooms",
+                component: GuestHotelRooms,
+                meta: {
+                    title: "Available Rooms",
+                    requiresAuth: true,
+                    role: "Client"
+                }
+            },
+            {
+                path: "guest/reservations",
+                name: "guest-reservations",
+                component: GuestReservations,
+                meta: {
+                    title: "My Reservations",
+                    requiresAuth: true,
+                    role: "Client"
+                }
             }
         ]
     },
@@ -117,7 +159,7 @@ const routes = [
         path: "/:pathMatch(.*)*",
         name: "not-found",
         component: PageNotFound,
-        meta: { title: "Página no encontrada", public: true }
+        meta: { title: "Page Not Found", public: true }
     }
 ];
 
@@ -126,35 +168,38 @@ const router = createRouter({
     routes
 });
 
-// Guardias de navegación
+// Navigation Guard
 router.beforeEach((to, from, next) => {
     const authStore = useAuthStore();
-    const isAuthenticated = !!authStore.token;
 
-    // Actualizar título de la página
-    document.title = to.meta.title || "Hotel Management System";
+    // Update document title
+    document.title = to.meta.title || "Hotel Manager";
 
-    // Redirigir a login si no está autenticado y la ruta no es pública
-    if (!to.meta.public && !isAuthenticated) {
-        next({ name: 'login', query: { redirect: to.fullPath } });
-        return;
+    // Check if route requires authentication
+    if (to.meta.requiresAuth) {
+        if (!authStore.token) {
+            // Not authenticated, redirect to login
+            next({ name: "login" });
+            return;
+        }
+
+        // Check role authorization
+        if (to.meta.role && authStore.user?.roles !== to.meta.role) {
+            // Wrong role, redirect to appropriate dashboard
+            const redirectRoute = authStore.user?.roles === "Admin"
+                ? "admin-dashboard"
+                : "guest-hotels";
+            next({ name: redirectRoute });
+            return;
+        }
     }
 
-    // Si está autenticado y trata de acceder a login/register, redirigir al home
-    if (isAuthenticated && (to.name === 'login' || to.name === 'register')) {
-        next({ name: 'home' });
-        return;
-    }
-
-    // Verificar roles de administrador
-    if (to.meta.requiresAdmin && authStore.user?.roles !== 'Admin') {
-        next({ name: 'home' });
-        return;
-    }
-
-    // Verificar roles de cliente
-    if (to.meta.requiresClient && authStore.user?.roles !== 'Client') {
-        next({ name: 'home' });
+    // If already authenticated and trying to access login/register
+    if ((to.name === "login" || to.name === "register") && authStore.token) {
+        const redirectRoute = authStore.user?.roles === "Admin"
+            ? "admin-dashboard"
+            : "guest-hotels";
+        next({ name: redirectRoute });
         return;
     }
 
