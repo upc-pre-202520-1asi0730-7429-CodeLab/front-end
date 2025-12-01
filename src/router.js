@@ -12,6 +12,7 @@ import SiderbarContent from "./shared/presentation/components/siderbar-content.v
 import RoomListView from "./hostelmanagers/Room/Presentation/Views/RoomListView.vue";
 import CreateRoom from "./hostelmanagers/Room/Presentation/Views/CreateRoom.vue";
 import EditRoomView from "./hostelmanagers/Room/Presentation/Views/EditRoomView.vue";
+import SubscriptionView from "./hostelmanagers/Subscription/Presentation/views/SubscriptionView.vue";
 // The following line caused the SyntaxError and has been removed:
 // import {routes} from "vue-router/auto-routes";
 
@@ -73,6 +74,11 @@ const router = createRouter({
                     name: 'edit-room',
                     component: EditRoomView,
                     props: true
+                },
+                {
+                    path: '/subscriptions',
+                    name: 'subscription',
+                    component: SubscriptionView,
                 },
 
                 ]
