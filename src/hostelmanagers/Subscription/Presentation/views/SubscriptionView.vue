@@ -1,6 +1,7 @@
 <script setup>
-import { ref } from 'vue';
-import {useSuscriptionStore} from "../../Application/subscription.store.js";
+import { ref, onMounted } from 'vue'; // Importamos onMounted
+import {useSuscriptionStore} from "../../Application/subscription.store.js"; // Ajusta la ruta si es necesario
+
 const store = useSuscriptionStore();
 const selectedPlanId = ref(null);
 
@@ -32,40 +33,129 @@ const plans = [
   }
 ];
 
+// --- Lógica de Manejo de la Suscripción Gratuita (Sin PayPal) ---
+
 /**
- * Lógica para manejar la suscripción al presionar un botón.
+ * Lógica para manejar la suscripción al plan Free.
  * @param {Object} plan - El objeto del plan seleccionado.
  */
-const handleSubscribe = async (plan) => {
+const handleFreeSubscription = async (plan) => {
   selectedPlanId.value = plan.id;
-
-  // ⚠️ NOTA: En un caso real, la payPalTransactionId debe obtenerse
-  // de un proceso de pago real (ej. al completar un checkout de PayPal).
-  // Aquí usamos un valor de prueba.
 
   const suscriptionData = {
     plan: plan.id,
-    payPalTransactionId: `TXN-${Date.now()}-${plan.id}`, // Generar un ID de transacción de prueba
-    statu: 1 // Estado 1: Activa/Pagada (según la petición)
+    payPalTransactionId: `FREE-${Date.now()}`, // ID de transacción mock para plan gratuito
+    statu: 1 // Estado 1: Activa
   };
 
   try {
     const success = await store.createSuscription(suscriptionData);
 
     if (success) {
-      alert(`¡Suscripción al plan ${plan.name} exitosa!`);
+      alert(`¡Suscripción al plan ${plan.name} activada!`);
     } else {
-      // Manejar el caso de error de la API
-      alert(`Error al suscribirse al plan ${plan.name}. Consulta la consola.`);
+      alert(`Error al activar el plan Free. Consulta la consola.`);
       console.error("Errores de Pinia Store:", store.errors);
     }
   } catch (error) {
-    alert("Ocurrió un error inesperado al procesar la suscripción.");
+    alert("Ocurrió un error inesperado.");
     console.error(error);
   } finally {
-    selectedPlanId.value = null; // Resetear el plan seleccionado
+    selectedPlanId.value = null;
   }
 };
+
+
+// --- Lógica de Integración de PayPal ---
+
+/**
+ * Función para renderizar el botón de PayPal para un plan específico.
+ * @param {Object} plan - El objeto del plan seleccionado.
+ */
+const renderPayPalButton = (plan) => {
+  // Solo renderiza para planes de pago
+  if (plan.cost <= 0 || !window.paypal) return;
+
+  // El contenedor donde se incrustará el botón
+  const containerId = `paypal-button-container-${plan.id}`;
+  const buttonContainer = document.getElementById(containerId);
+
+  if (buttonContainer) {
+    window.paypal.Buttons({
+      // 1. Crear Orden: Define el monto y la intención del pago.
+      createOrder: (data, actions) => {
+        selectedPlanId.value = plan.id;
+        return actions.order.create({
+          purchase_units: [{
+            amount: {
+              currency_code: 'USD', // Asegúrate que la moneda coincida con tu plan
+              value: plan.cost.toFixed(2) // Asegura dos decimales
+            }
+          }]
+        });
+      },
+
+      // 2. Aprobar Orden: Se ejecuta cuando el usuario aprueba el pago en la ventana de PayPal.
+      onApprove: async (data, actions) => {
+        // Capturar el pago directamente en el frontend (solo para esta implementación)
+        // En un sistema real, la captura la haría el backend para mayor seguridad.
+        const details = await actions.order.capture();
+
+        if (details.status === 'COMPLETED') {
+          // El pago fue exitoso, ahora registramos la suscripción en nuestro sistema
+          const payPalTransactionId = details.id; // El ID de la orden de PayPal (o captura)
+
+          const suscriptionData = {
+            plan: plan.id,
+            payPalTransactionId: payPalTransactionId,
+            statu: 1 // Estado 1: Activa/Pagada
+          };
+
+          try {
+            // Llama a tu acción de Pinia Store para registrar la suscripción
+            const success = await store.createSuscription(suscriptionData);
+
+            if (success) {
+              alert(`¡Pago y Suscripción al plan ${plan.name} exitosa! ID de Transacción: ${payPalTransactionId}`);
+            } else {
+              // NOTA: Si falla aquí, el usuario ya pagó. Deberías tener un mecanismo
+              // para resolver esto (ej. un webhook o revisión manual).
+              alert(`🚨 ERROR: Pago de PayPal exitoso, pero falló el registro de la suscripción. Contacte a soporte.`);
+              console.error("Errores de Pinia Store:", store.errors);
+            }
+          } catch (error) {
+            alert("Ocurrió un error al registrar la suscripción.");
+            console.error(error);
+          }
+        } else {
+          alert('El pago de PayPal no se completó (estado: ' + details.status + ').');
+        }
+        selectedPlanId.value = null;
+      },
+
+      // Manejo de cancelación y errores
+      onCancel: () => {
+        selectedPlanId.value = null;
+      },
+      onError: (err) => {
+        console.error('Error general de PayPal:', err);
+        alert('Ocurrió un error con el proceso de pago. Intente nuevamente.');
+        selectedPlanId.value = null;
+      }
+    }).render(`#${containerId}`); // Renderiza el botón en el contenedor
+  }
+};
+
+// Se ejecuta después de que el componente ha sido montado.
+onMounted(() => {
+  // Pequeño chequeo para asegurarnos que el SDK de PayPal se haya cargado
+  const checkPayPalLoaded = setInterval(() => {
+    if (window.paypal) {
+      clearInterval(checkPayPalLoaded);
+      plans.filter(p => p.cost > 0).forEach(renderPayPalButton);
+    }
+  }, 100);
+});
 </script>
 
 <template>
@@ -97,14 +187,28 @@ const handleSubscribe = async (plan) => {
           </li>
         </ul>
 
-        <button
-            @click="handleSubscribe(plan)"
-            :disabled="store.loading && selectedPlanId === plan.id"
-            class="subscribe-button"
-        >
-          <span v-if="store.loading && selectedPlanId === plan.id">Procesando...</span>
-          <span v-else>{{ plan.buttonText }}</span>
-        </button>
+        <template v-if="plan.cost === 0">
+          <button
+              @click="handleFreeSubscription(plan)"
+              :disabled="store.loading && selectedPlanId === plan.id"
+              class="subscribe-button"
+          >
+            <span v-if="store.loading && selectedPlanId === plan.id">Procesando...</span>
+            <span v-else>{{ plan.buttonText }}</span>
+          </button>
+        </template>
+        <template v-else>
+          <div
+              :id="`paypal-button-container-${plan.id}`"
+              :style="{ minHeight: store.loading && selectedPlanId === plan.id ? '50px' : 'auto' }"
+              class="paypal-button-wrapper"
+          >
+            <div v-if="store.loading && selectedPlanId === plan.id" class="paypal-loading-overlay">
+              Procesando Pago...
+            </div>
+          </div>
+        </template>
+
       </div>
     </div>
 
@@ -116,10 +220,39 @@ const handleSubscribe = async (plan) => {
     </div>
   </div>
 </template>
-
 <style scoped>
 /* --- Estilos del Componente --- */
 
+.subscription-view {
+  font-family: Arial, sans-serif;
+  padding: 40px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+/* Añadir estilos para el contenedor de PayPal */
+.paypal-button-wrapper {
+  margin-top: 30px;
+  min-height: 50px; /* Espacio para el botón de PayPal */
+  position: relative;
+}
+
+.paypal-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #007bff;
+  border-radius: 8px;
+  z-index: 10;
+}
+
+/* El resto de tus estilos */
 .subscription-view {
   font-family: Arial, sans-serif;
   padding: 40px 20px;
