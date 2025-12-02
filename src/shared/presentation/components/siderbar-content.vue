@@ -35,9 +35,9 @@
               </RouterLink>
             </li>
 
-            
+
             <li v-if="hasManagementAccess">
-              <RouterLink to="/reservations" class="menu-item">
+              <RouterLink to="/reservations/admin" class="menu-item">
                 <i class="pi pi-calendar"></i>
                 <span>Reservas</span>
               </RouterLink>

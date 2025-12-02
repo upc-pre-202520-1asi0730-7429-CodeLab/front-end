@@ -17,6 +17,7 @@ import ClientHotelView from "./hostelmanagers/Hotel/presentation/views/client.ho
 import DetailsHotel from "./hostelmanagers/Hotel/presentation/views/details.hotel.vue";
 import ReservationView from "./hostelmanagers/Reservation/presentation/Views/ReservationView.vue";
 import CreateReservation from "./hostelmanagers/Reservation/presentation/Views/createReservation.vue";
+import AdminReservationView from "./hostelmanagers/Reservation/presentation/Views/adminReservation.vue";
 // The following line caused the SyntaxError and has been removed:
 // import {routes} from "vue-router/auto-routes";
 
@@ -104,6 +105,11 @@ const router = createRouter({
                     name: 'ReservationsCreate',
                     component: CreateReservation,
                     props: true,
+                },
+                {
+                    path: '/reservations/admin',
+                    name: 'ReservationsAdmin',
+                    component: AdminReservationView,
                 },
                 ]
         },

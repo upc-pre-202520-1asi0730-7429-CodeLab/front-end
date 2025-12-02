@@ -19,6 +19,11 @@ export class HotelsApi extends BaseApi {
         return this.#hotelsEndpoint.getById(id);        // GET /hotels/{id}
     }
 
+    getHotelsByUserId(userId) {
+        // Asumiendo que el backend soporta la consulta GET /hotels?userId={userId}
+        return this.http.get(`${hotelsEndpointPath}?userId=${userId}`);
+    }
+
     createHotel(resource) {
         return this.#hotelsEndpoint.create(resource);   // POST /hotels
     }
