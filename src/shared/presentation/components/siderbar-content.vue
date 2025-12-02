@@ -33,8 +33,9 @@
                 <i class="pi pi-home"></i>
                 <span>Mis Habitaciones</span>
               </RouterLink>
-            </li>           
+            </li>
 
+            
             <li v-if="hasManagementAccess">
               <RouterLink to="/reservations" class="menu-item">
                 <i class="pi pi-calendar"></i>

@@ -1,12 +1,20 @@
 <script setup>
-import { onMounted, watch } from "vue";
+import { onMounted, watch, ref, computed } from "vue"; // 🔑 Importamos ref y computed
 import { useRouter } from 'vue-router';
 import useHotelStore from "../../application/hotel.store.js";
 import { useToast } from 'primevue/usetoast';
 import Tooltip from 'primevue/tooltip';
 
+// 🚀 Importaciones de componentes necesarios para el filtro
+import InputText from 'primevue/inputtext';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Button from 'primevue/button';
+import Toast from 'primevue/toast';
+import Message from 'primevue/message';
+
+
 // 🔑 Define el nombre explícito del componente.
-// Esto es útil para herramientas de desarrollo y recursividad.
 defineOptions({
   name: 'ClientHotelView'
 });
@@ -15,6 +23,26 @@ const store = useHotelStore();
 const toast = useToast();
 const router = useRouter();
 const vTooltip = Tooltip;
+
+// --- Estado de Filtro ---
+const globalFilter = ref(''); // 🔑 Estado reactivo para el campo de búsqueda
+
+// --- Propiedad Computada para la Tabla ---
+/**
+ * Filtra los hoteles basándose en el valor de globalFilter.
+ */
+const filteredHotels = computed(() => {
+  if (!globalFilter.value) {
+    return store.hotels;
+  }
+  const filterText = globalFilter.value.toLowerCase();
+
+  return store.hotels.filter(hotel => {
+    // Filtra por el nombre del hotel
+    return hotel.name.toLowerCase().includes(filterText);
+  });
+});
+
 
 onMounted(() => {
   store.fetchHotels();
@@ -43,21 +71,13 @@ const viewHotelDetails = (id) => {
   router.push(`/hotels/details/${id}`);
 };
 
-/**
- * Navega a la vista de habitaciones filtradas por hotel.
- * @param {number} id - El ID del hotel.
- * @param {string} name - El nombre del hotel.
- */
-const viewHotelRooms = (id, name) => {
-  // Navega a la ruta de "Ver Habitaciones" y usa el hotelId como filtro
-  router.push({path: '/view-rooms', query: {hotelId: id, hotelName: name}});
-};
+// 🛑 La función viewHotelRooms (Ver Habitaciones) ha sido eliminada.
 </script>
 
 <template>
   <div class="hotels-page-container">
 
-    <pv-toast position="top-right"/>
+    <Toast position="top-right"/>
 
     <div class="page-header-section">
       <h1 class="page-title-main">
@@ -67,8 +87,20 @@ const viewHotelRooms = (id, name) => {
     </div>
 
     <div class="table-card-wrapper">
-      <pv-data-table
-          :value="store.hotels"
+
+      <div class="filter-toolbar">
+        <span class="p-input-icon-left">
+            <i class="pi pi-search" />
+            <InputText
+                v-model="globalFilter"
+                placeholder="Buscar por Nombre del Hotel"
+                class="search-input"
+            />
+        </span>
+      </div>
+
+      <DataTable
+          :value="filteredHotels"
           dataKey="id"
           :loading="store.loading"
           responsiveLayout="scroll"
@@ -84,54 +116,52 @@ const viewHotelRooms = (id, name) => {
           </div>
         </template>
 
-        <pv-column field="images" header="Imagen" class="col-image">
+        <Column field="images" header="Imagen" class="col-image">
           <template #body="{ data }">
             <div v-if="data.images && typeof data.images === 'string'">
               <img
                   :src="data.images"
                   alt="Imagen del Hotel"
                   class="hotel-image"
+                  v-tooltip.right="data.name"
               />
             </div>
             <div v-else class="no-image-placeholder">
               <i class="pi pi-image"></i>
             </div>
           </template>
-        </pv-column>
+        </Column>
 
-        <pv-column field="name" header="Nombre" :sortable="true">
+        <Column field="id" header="ID" :sortable="true" class="col-id"/>
+
+        <Column field="name" header="Nombre" :sortable="true">
           <template #body="{ data }">
             <span class="name-text">{{ data.name }}</span>
           </template>
-        </pv-column>
+        </Column>
 
-        <pv-column field="address" header="Ubicación" class="col-address"/>
-        <pv-column header="Acciones" class="col-actions">
+        <Column field="address" header="Ubicación" class="col-address"/>
+
+        <Column field="phone" header="Teléfono" class="col-phone"/>
+
+        <Column header="Acciones" class="col-actions-small">
           <template #body="{ data }">
-            <pv-button
+            <Button
                 icon="pi pi-info-circle"
                 label="Detalles"
-                class="p-button-sm p-button-info mr-2"
+                class="p-button-sm p-button-info"
                 v-tooltip.top="'Ver detalles del hotel'"
                 @click="viewHotelDetails(data.id)"
             />
-
-            <pv-button
-                icon="pi pi-home"
-                label="Ver Habitaciones"
-                class="p-button-sm p-button-secondary"
-                v-tooltip.top="'Ver habitaciones disponibles en este hotel'"
-                @click="viewHotelRooms(data.id, data.name)"
-            />
           </template>
-        </pv-column>
-      </pv-data-table>
+        </Column>
+      </DataTable>
     </div>
 
     <div v-if="store.errors.length" class="error-message-wrapper">
-      <pv-message severity="error">
+      <Message severity="error">
         <i class="pi pi-exclamation-triangle error-message-icon"></i> No se pudo obtener la lista de hoteles.
-      </pv-message>
+      </Message>
     </div>
 
   </div>
@@ -172,6 +202,20 @@ const viewHotelRooms = (id, name) => {
 }
 
 /* -------------------------------------- */
+/* FILTRO */
+/* -------------------------------------- */
+.filter-toolbar {
+  padding: 1rem 1.5rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.search-input {
+  width: 20rem;
+  padding-left: 2.5rem;
+}
+
+/* -------------------------------------- */
 /* TABLA Y CONTENEDOR */
 /* -------------------------------------- */
 
@@ -183,12 +227,7 @@ const viewHotelRooms = (id, name) => {
 }
 
 /* Estilos de PrimeVue internos (usando :deep para modificarlos) */
-.hotels-data-table :deep(.p-datatable-header) {
-  background-color: #f8f9fa;
-  padding: 1.25rem 1.5rem;
-  font-weight: 600;
-  color: #495057;
-}
+/* Nota: Se eliminó el :deep(.p-datatable-header) ya que se usa filter-toolbar */
 
 .hotels-data-table :deep(.p-datatable-thead > tr > th) {
   background-color: #e9ecef;
@@ -236,8 +275,14 @@ const viewHotelRooms = (id, name) => {
   color: #6c757d;
 }
 
-.col-actions {
-  width: 25rem; /* Aumentamos el ancho para los dos botones */
+/* Estilos de columna para los datos */
+.col-id, .col-phone {
+  width: 8rem;
+  font-size: 0.9rem;
+}
+
+.col-actions-small {
+  width: 10rem;
   text-align: center;
 }
 
