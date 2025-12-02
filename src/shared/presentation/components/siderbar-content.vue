@@ -33,14 +33,7 @@
                 <i class="pi pi-home"></i>
                 <span>Mis Habitaciones</span>
               </RouterLink>
-            </li>
-
-            <li v-if="isClientRole">
-              <RouterLink to="/view-rooms" class="menu-item">
-                <i class="pi pi-search"></i>
-                <span>Ver Habitaciones</span>
-              </RouterLink>
-            </li>
+            </li>           
 
             <li v-if="hasManagementAccess">
               <RouterLink to="/reservations" class="menu-item">
