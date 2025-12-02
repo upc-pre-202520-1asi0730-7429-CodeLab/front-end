@@ -50,7 +50,7 @@
             </li>
 
             <li v-if="isClientRole">
-              <RouterLink to="/view-reservations" class="menu-item">
+              <RouterLink to="/reservations" class="menu-item">
                 <i class="pi pi-calendar"></i>
                 <span>Ver Reservas</span>
               </RouterLink>

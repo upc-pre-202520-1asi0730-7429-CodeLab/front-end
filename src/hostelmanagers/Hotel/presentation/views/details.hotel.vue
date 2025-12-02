@@ -234,7 +234,7 @@ watch(
                 severity="success"
                 icon="pi pi-calendar-plus"
                 size="small"
-                @click="router.push({ name: 'create-reservation', query: { roomId: room.id, hotelId: hotel.id } })"
+                @click="router.push({ name: 'ReservationsCreate', params: { id: room.id } })"
             />
           </template>
         </pv-card>
