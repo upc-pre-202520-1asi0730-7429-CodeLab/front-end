@@ -13,6 +13,8 @@ import RoomListView from "./hostelmanagers/Room/Presentation/Views/RoomListView.
 import CreateRoom from "./hostelmanagers/Room/Presentation/Views/CreateRoom.vue";
 import EditRoomView from "./hostelmanagers/Room/Presentation/Views/EditRoomView.vue";
 import SubscriptionView from "./hostelmanagers/Subscription/Presentation/views/SubscriptionView.vue";
+import ClientHotelView from "./hostelmanagers/Hotel/presentation/views/client.hotel.vue";
+import DetailsHotel from "./hostelmanagers/Hotel/presentation/views/details.hotel.vue";
 // The following line caused the SyntaxError and has been removed:
 // import {routes} from "vue-router/auto-routes";
 
@@ -80,7 +82,16 @@ const router = createRouter({
                     name: 'subscription',
                     component: SubscriptionView,
                 },
-
+                {
+                    path: '/hotels_user',
+                    name: 'HotelsUser',
+                    component: ClientHotelView,
+                },
+                {
+                    path: '/hotels/details/:id',
+                    name: 'DetailsHotel',
+                    component: DetailsHotel,
+                },
                 ]
         },
         {

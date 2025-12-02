@@ -22,7 +22,7 @@
             </li>
 
             <li v-if="isClientRole">
-              <RouterLink to="/view-hotels" class="menu-item">
+              <RouterLink to="/hotels_user" class="menu-item">
                 <i class="pi pi-building"></i>
                 <span>Buscar y Ver Hoteles</span>
               </RouterLink>
