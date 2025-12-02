@@ -3,6 +3,7 @@ import {ref, onMounted, computed} from 'vue';
 import useUserStore from '../../../IAM/application/user.store.js';
 import {useToast} from 'primevue/usetoast';
 import {useReservationStore} from "../../application/reservation.store.js";
+// 🔑 1. Importar la clase API de Reservas (Asegúrate de que la ruta sea correcta)
 
 // Importaciones de Componentes de PrimeVue
 import Button from 'primevue/button';
@@ -15,6 +16,7 @@ import Tooltip from 'primevue/tooltip';
 import InputText from 'primevue/inputtext';
 import {HotelsApi} from "../../../Hotel/infrastructure/hotel-api.js";
 import {RoomsApi} from "../../../Room/Infrastructure/room-api.js";
+import {ReservationsApi} from "../../infrastructure/reservation-api.js";
 
 defineOptions({
   name: 'AdminReservationView'
@@ -31,6 +33,8 @@ const userStore = useUserStore();
 const toast = useToast();
 const hotelsApi = new HotelsApi();
 const roomsApi = new RoomsApi();
+// 🔑 2. Instanciar la API de Reservas (ReservationsApi)
+const reservationsApi = new ReservationsApi();
 
 // --- Estado Reactivo y Mapas de Cache ---
 const loading = ref(true);
@@ -58,7 +62,7 @@ const getCloudinaryUrl = (resourcePath) => {
   return resourcePath ? `${CLOUDINARY_BASE_URL}${resourcePath}` : DEFAULT_IMAGE_PATH;
 };
 
-// --- Propiedades Computadas (sin cambios) ---
+// --- Propiedades Computadas ---
 
 const filteredReservations = computed(() => {
   if (!globalFilter.value) {
@@ -75,6 +79,7 @@ const filteredReservations = computed(() => {
 
 const getStatusSeverity = (status) => {
   switch (status) {
+    case 'Accepted':
     case 'Confirmed':
       return 'success';
     case 'Pending':
@@ -86,9 +91,54 @@ const getStatusSeverity = (status) => {
   }
 };
 
+// --- NUEVA LÓGICA: Aceptar Reserva (PUT) ---
+const handleAcceptReservation = async (reservationId) => {
+  try {
+    loading.value = true;
+    const NEW_STATUS = "Accepted";
+
+    console.log(`[Action] Intentando actualizar reserva #${reservationId} a estado: ${NEW_STATUS}`);
+
+    // 🔑 3. Usamos el método updateReservation de ReservationsApi
+    // La API espera un objeto de recurso, solo le enviamos el campo 'status'
+    await reservationsApi.updateReservation(reservationId, {status: NEW_STATUS});
+
+    // 4. Actualizar el estado local (adminReservations) para refrescar la tabla
+    const index = adminReservations.value.findIndex(res => String(res.id) === String(reservationId));
+
+    if (index !== -1) {
+      adminReservations.value[index].status = NEW_STATUS;
+      // Para asegurar reactividad, podrías considerar reemplazar el objeto entero
+      adminReservations.value.splice(index, 1, {
+        ...adminReservations.value[index],
+        status: NEW_STATUS
+      });
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: 'Reserva Aceptada',
+      detail: `La reserva #${reservationId} ha sido marcada como '${NEW_STATUS}'.`,
+      life: 3000
+    });
+
+  } catch (error) {
+    console.error("Error al aceptar la reserva:", error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error de Actualización',
+      detail: `No se pudo aceptar la reserva #${reservationId}. Error: ${error.message}`,
+      life: 5000
+    });
+  } finally {
+    loading.value = false;
+  }
+};
+
 // --- Lógica de Carga y Cruce de Datos (CRÍTICA) ---
 
 const loadAdminReservations = async () => {
+  // ... (La lógica de carga y logs se mantiene igual que la versión anterior) ...
   loading.value = true;
   adminReservations.value = [];
   hotelMap.clear();
@@ -98,7 +148,6 @@ const loadAdminReservations = async () => {
     const adminId = userStore.currentUser?.id;
     const adminRole = userStore.currentUser?.role;
 
-    // 🔑 LOG 1: Verificar el ID y Rol del usuario
     console.log(`[AdminCheck] Rol de usuario autenticado: "${adminRole}"`);
     console.log(`[AdminCheck] ID de usuario autenticado: ${adminId}`);
 
@@ -117,12 +166,10 @@ const loadAdminReservations = async () => {
     const hotelsResponse = await hotelsApi.getHotelsByUserId(String(adminId));
     const hotelsFromApi = hotelsResponse.data || [];
 
-    // 🔑 CORRECCIÓN: Filtramos en el frontend para asegurar que solo usemos hoteles del usuario autenticado
     const adminHotels = hotelsFromApi.filter(hotel =>
         String(hotel.userId) === String(adminId)
     );
 
-    // 🔑 LOG 2: Verificar la respuesta de Hoteles
     console.log(`[Paso 1 - API Raw] Hoteles recibidos de la API (sin filtrar):`, hotelsFromApi);
     console.log(`[Paso 1 - Filtrado] Hoteles *realmente* vinculados a User ID ${adminId}:`, adminHotels);
 
@@ -145,7 +192,6 @@ const loadAdminReservations = async () => {
     const roomsResults = await Promise.all(roomFetchPromises);
     allAdminRooms = roomsResults.flat();
 
-    // 🔑 LOG 3: Verificar las Habitaciones encontradas
     console.log(`[Paso 2] Total de habitaciones encontradas: ${allAdminRooms.length}`);
 
     allAdminRooms.forEach(room => roomMap.set(String(room.id), room));
@@ -161,7 +207,6 @@ const loadAdminReservations = async () => {
     await reservationStore.fetchReservations();
     const allReservations = reservationStore.reservations;
 
-    // 🔑 LOG 4: Verificar los IDs de habitación del Admin y las Reservas totales
     console.log("[Paso 3] IDs de habitación del Admin (filtrado):", adminRoomIds);
     console.log("[Paso 3] Número total de reservas en el Store:", allReservations.length);
 
@@ -170,7 +215,6 @@ const loadAdminReservations = async () => {
         adminRoomIds.includes(String(res.roomId))
     );
 
-    // 🔑 LOG 5: Verificar las Reservas Filtradas
     console.log(`[Paso 3] Reservas relevantes encontradas: ${relevantReservations.length}`, relevantReservations);
 
     // 4. Enriquecer las Reservas Filtradas
@@ -320,7 +364,7 @@ onMounted(() => {
                 class="p-button-sm p-button-success p-button-outlined"
                 v-tooltip.top="'Confirmar Reserva'"
                 :disabled="data.status !== 'Pending'"
-                @click="console.log('Confirmar:', data.id)"
+                @click="handleAcceptReservation(data.id)"
             />
           </template>
         </Column>

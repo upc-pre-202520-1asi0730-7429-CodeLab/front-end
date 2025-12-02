@@ -73,4 +73,13 @@ export class ReservationsApi extends BaseApi {
         // Asume un endpoint que soporta query params: GET /reservations?userId={userId}
         return this.#reservationsEndpoint.getById({ userId });
     }
+
+    updateReservationStatus(id, newStatus) {
+        // La API necesita el ID y un objeto que contenga el nuevo estado.
+        // Usamos el método PUT del BaseEndpoint.
+        const resource = { status: newStatus };
+        return this.#reservationsEndpoint.update(id, resource);
+        // Esto se traduce en: PUT /api/v1/reservations/{id} con body: { "status": "Accepted" }
+    }
+
 }
