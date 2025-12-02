@@ -21,7 +21,7 @@ const router = createRouter({
     routes: [
 
         {
-            path: "/login",
+            path: "/",
             name: "login",
             component: Login,
             meta: { title: "Login", public: true }

@@ -1,25 +1,121 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { RouterView } from 'vue-router'; // Importar RouterView explícitamente
+import { ref, computed, onMounted } from 'vue';
+import { RouterView, RouterLink } from 'vue-router';
+// ⚠️ AJUSTA ESTAS RUTAS DE IMPORTACIÓN A TU ESTRUCTURA REAL
 import useUserStore from '../../../hostelmanagers/IAM/application/user.store.js';
+import {SuscriptionsApi} from "../../../hostelmanagers/Subscription/Infrastructure/subscription-api.js";
+import {UsersApi} from "../../../hostelmanagers/IAM/infrastructure/user-api.js";
 
 const userStore = useUserStore();
+const usersApi = new UsersApi();
+const suscriptionsApi = new SuscriptionsApi();
 
-// Inicializar el store desde localStorage al montar
-onMounted(() => {
+const isLoadingData = ref(true);
+const hasActiveSuscription = ref(false);
+
+// --- 1. Lógica de Obtención de Datos ---
+
+const fetchAndSetUserRole = async (userId) => {
+  try {
+    const response = await usersApi.getUserRoleById(userId);
+    const role = response.data.role;
+
+    if (role) {
+      userStore.currentUser = {...userStore.currentUser, role};
+      localStorage.setItem('currentUser', JSON.stringify(userStore.currentUser));
+    }
+  } catch (error) {
+    console.error('Error al obtener el rol del usuario:', error);
+  }
+};
+
+/**
+ * Verifica la suscripción del usuario llamando a getAllSuscriptions y filtrando por userId.
+ */
+const checkUserSuscription = async (userId) => {
+  try {
+    const response = await suscriptionsApi.getAllSuscriptions();
+    const allSuscriptions = Array.isArray(response.data) ? response.data : [];
+
+    // 💡 CORRECCIÓN DE TIPO: Aseguramos que ambos userId sean tratados como strings para la comparación.
+    const found = allSuscriptions.find(s => String(s.userId) === String(userId));
+
+    hasActiveSuscription.value = !!found;
+
+    if (!found) {
+      console.warn(`[Suscripción] No se encontró ninguna suscripción asociada al usuario ${userId}.`);
+    } else {
+      console.log(`[Suscripción] Suscripción activa encontrada para el usuario ${userId}.`);
+    }
+
+  } catch (error) {
+    console.error('Error al obtener la lista completa de suscripciones:', error);
+    hasActiveSuscription.value = false;
+  }
+};
+
+// --- 2. Ciclo de Vida ---
+
+onMounted(async () => {
+  isLoadingData.value = true;
   const userJson = localStorage.getItem('currentUser');
+
   if (userJson) {
     try {
       const userData = JSON.parse(userJson);
+
       if (!userStore.currentUser) {
         userStore.currentUser = userData;
       }
+
+      const user = userStore.currentUser;
+
+      if (user && user.id) {
+        // 1. Obtener Rol
+        if (!user.role) {
+          await fetchAndSetUserRole(user.id);
+        }
+
+        // 2. Verificar Suscripción
+        // Solo verificamos si el usuario NO es Cliente, para optimizar la llamada
+        if (user.role !== 'Client') {
+          await checkUserSuscription(user.id);
+        }
+      }
     } catch (e) {
-      console.error('Error al parsear usuario:', e);
+      console.error('Error al iniciar el usuario:', e);
       localStorage.removeItem('currentUser');
     }
   }
+
+  isLoadingData.value = false;
 });
+
+// --- 3. Propiedades Computadas para la Validación del Menú ---
+
+/**
+ * Retorna true si el rol es 'Client'.
+ */
+const isClientRole = computed(() => {
+  return userStore.currentUser?.role === 'Client';
+});
+
+/**
+ * Retorna true si el usuario tiene permiso para ver los módulos de gestión.
+ * 🔑 NUEVA LÓGICA: Client siempre tiene acceso. Admin/Manager requiere suscripción.
+ */
+const canAccessManagementModules = computed(() => {
+  if (isLoadingData.value) return false;
+
+  // 🔑 Si es Client, el acceso está garantizado por su rol.
+  if (isClientRole.value) {
+    return true;
+  }
+
+  // Si no es Client (es Admin, Manager, etc.), el acceso requiere suscripción activa.
+  return hasActiveSuscription.value;
+});
+
 
 const handleLogout = () => {
   userStore.logout();
@@ -34,50 +130,63 @@ const handleLogout = () => {
       <div class="sidebar-title">
         <h3>Menú Principal</h3>
         <small v-if="userStore.currentUser">
-          Usuario: {{ userStore.currentUser.username }}
+          Usuario: **{{ userStore.currentUser.username }}**
+          <span v-if="isLoadingData" style="font-style: italic;"> (Verificando acceso...)</span>
         </small>
       </div>
 
       <nav>
-        <ul class="menu-list">
+        <ul class="menu-list" v-if="!isLoadingData || !userStore.currentUser">
           <template v-if="userStore.currentUser">
 
-            <li>
-              <RouterLink to="/hotels" class="menu-item">
-                <i class="pi pi-building"></i>
-                <span>Mis Hoteles / Buscar Hoteles</span>
-              </RouterLink>
-            </li>
+            <template v-if="canAccessManagementModules">
+              <li>
+                <RouterLink to="/hotels" class="menu-item">
+                  <i class="pi pi-building"></i>
+                  <span>Mis Hoteles / Buscar Hoteles</span>
+                </RouterLink>
+              </li>
 
-            <li>
-              <RouterLink to="/rooms" class="menu-item">
-                <i class="pi pi-home"></i>
-                <span>Mis Habitaciones</span>
-              </RouterLink>
-            </li>
+              <li>
+                <RouterLink to="/rooms" class="menu-item">
+                  <i class="pi pi-home"></i>
+                  <span>Mis Habitaciones</span>
+                </RouterLink>
+              </li>
 
-            <li>
-              <RouterLink to="/reservations" class="menu-item">
-                <i class="pi pi-calendar"></i>
-                <span>Reservas</span>
-              </RouterLink>
-            </li>
+              <li>
+                <RouterLink to="/reservations" class="menu-item">
+                  <i class="pi pi-calendar"></i>
+                  <span>Reservas</span>
+                </RouterLink>
+              </li>
 
-            <li>
+              <li class="menu-separator"></li>
+            </template>
+
+            <li v-if="!isClientRole">
               <RouterLink to="/subscriptions" class="menu-item">
                 <i class="pi pi-credit-card"></i>
                 <span>Mi Suscripción</span>
               </RouterLink>
             </li>
 
+            <li v-if="!canAccessManagementModules && !isClientRole && !isLoadingData">
+                <span style="display: block; padding: 10px; font-size: 0.75rem; color: #dc3545; text-align: center;">
+                    Crea tu suscripción para acceder a los módulos de gestión.
+                </span>
+            </li>
+
+
             <li class="menu-separator"></li>
 
-            <li>
+            <li v-if="!isClientRole">
               <RouterLink to="/profile" class="menu-item">
                 <i class="pi pi-user"></i>
                 <span>Mi Perfil</span>
               </RouterLink>
             </li>
+
             <li>
               <a href="#" @click.prevent="handleLogout" class="menu-item logout">
                 <i class="pi pi-sign-out"></i>
@@ -86,19 +195,24 @@ const handleLogout = () => {
             </li>
           </template>
         </ul>
+
+        <div v-if="isLoadingData && userStore.currentUser" style="text-align: center; padding: 20px;">
+          Verificando acceso...
+        </div>
+
       </nav>
     </aside>
 
     <main class="content-wrapper">
-      <RouterView /> </main>
-
+      <RouterView/>
+    </main>
   </div>
 </template>
 
 <style scoped>
-/* 🛑 ESTILOS NUEVOS PARA EL LAYOUT (Horizontal) */
+/* Estilos omitidos por brevedad */
 .layout-con-sidebar {
-  display: flex; /* Habilita la disposición horizontal */
+  display: flex;
   width: 100%;
   min-height: 100vh;
 }
@@ -109,16 +223,15 @@ const handleLogout = () => {
   background-color: #f8f9fa;
   border-right: 1px solid #dee2e6;
   padding: 0;
-  flex-shrink: 0; /* Evita que el sidebar se comprima */
+  flex-shrink: 0;
 }
 
 .content-wrapper {
-  flex-grow: 1; /* Permite que el contenido ocupe el resto del espacio */
+  flex-grow: 1;
   padding: 20px;
-  overflow-y: auto; /* Permite desplazamiento si el contenido es largo */
+  overflow-y: auto;
 }
 
-/* Estilos existentes para el menú del sidebar (mantenerlos) */
 .sidebar-title {
   padding: 1.5rem 1rem;
   border-bottom: 1px solid #dee2e6;
@@ -136,13 +249,12 @@ const handleLogout = () => {
   font-size: 0.8rem;
 }
 
+/* -------------------------------------- */
+/* MENÚ Y ENLACES */
+/* -------------------------------------- */
 .menu-list {
   list-style: none;
   padding: 0;
-  margin: 0;
-}
-
-.menu-list li {
   margin: 0;
 }
 

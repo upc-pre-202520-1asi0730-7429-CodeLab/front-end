@@ -1,10 +1,12 @@
 <script setup>
-import { onMounted, watch } from "vue";
+import { onMounted, watch, computed } from "vue"; // Importar 'computed'
 import useHotelStore from "../../application/hotel.store.js";
+import useUserStore from '../../../IAM/application/user.store.js';
 import { useToast } from 'primevue/usetoast';
 import Tooltip from 'primevue/tooltip';
 
 const store = useHotelStore();
+const userStore = useUserStore();// 👈 INSTANCIA DEL USER STORE
 const toast = useToast();
 
 const vTooltip = Tooltip;
@@ -28,13 +30,33 @@ watch(
 );
 
 /**
+ * Propiedad computada para determinar si el usuario puede modificar/crear hoteles.
+ * Es true si el rol NO es 'Client'.
+ */
+const canModify = computed(() => {
+  // Si no hay usuario o si el rol no es 'Client', permitimos la modificación.
+  // Asumimos que solo 'Client' debe estar restringido.
+  return userStore.currentUser?.role !== 'Client';
+});
+
+
+/**
  * Maneja la eliminación de un hotel dado su ID.
- * Nota: Por simplicidad, omitimos el ConfirmDialog, pero deberías agregarlo.
  * @param {number} id - El ID del hotel a eliminar.
  * @param {string} name - El nombre del hotel (para el mensaje).
  */
 const handleDelete = async (id, name) => {
-  // 📢 Idealmente, aquí se implementaría un componente de confirmación (e.g., PrimeVue ConfirmPopup)
+  // Aseguramos que solo los usuarios autorizados puedan intentar la eliminación
+  if (!canModify.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Acción No Permitida',
+      detail: 'Tu rol no te permite eliminar hoteles.',
+      life: 3000
+    });
+    return;
+  }
+
   if (!confirm(`¿Estás seguro de que deseas eliminar el hotel "${name}"? Esta acción es irreversible.`)) {
     return;
   }
@@ -71,7 +93,7 @@ const handleDelete = async (id, name) => {
         Gestión de Hoteles
       </h1>
 
-      <RouterLink to="/hotels/create">
+      <RouterLink to="/hotels/create" v-if="canModify">
         <pv-button
             label="Añadir Nuevo Hotel"
             icon="pi pi-plus"
@@ -128,7 +150,7 @@ const handleDelete = async (id, name) => {
         <pv-column field="address" header="Dirección" class="col-address" />
         <pv-column field="phone" header="Teléfono" class="col-phone" />
 
-        <pv-column header="Acciones" class="col-actions">
+        <pv-column header="Acciones" class="col-actions" v-if="canModify">
           <template #body="{ data }">
             <RouterLink :to="`/hotels/${data.id}/edit`" class="action-link">
               <pv-button
@@ -157,7 +179,8 @@ const handleDelete = async (id, name) => {
 </template>
 
 <style scoped>
-/* (El resto de los estilos queda sin cambios) */
+/* (Los estilos proporcionados se mantienen aquí) */
+
 /* -------------------------------------- */
 /* LAYOUT BASE Y PÁGINA */
 /* -------------------------------------- */

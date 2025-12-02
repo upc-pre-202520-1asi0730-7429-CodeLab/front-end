@@ -38,4 +38,11 @@ export class UsersApi extends BaseApi {
     signUp(payload) {
         return this.http.post(signUpPath, payload);
     }
+
+    getUserRoleById(userId) {
+        // La URL completa será: [base-url]/api/v1/users/{userId}/role
+        const roleEndpointPath = `${usersEndpointPath}/${userId}/role`;
+        // Usamos this.http.get para hacer la solicitud
+        return this.http.get(roleEndpointPath);
+    }
 }

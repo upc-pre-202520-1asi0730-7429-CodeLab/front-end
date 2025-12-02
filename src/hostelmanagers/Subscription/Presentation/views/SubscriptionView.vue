@@ -1,11 +1,16 @@
 <script setup>
-import { ref, onMounted } from 'vue'; // Importamos onMounted
-import {useSuscriptionStore} from "../../Application/subscription.store.js"; // Ajusta la ruta si es necesario
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
+import { useSuscriptionStore } from "../../Application/subscription.store.js";
+import useAuthStore from "../../../IAM/application/user.store.js";
 
 const store = useSuscriptionStore();
+const authStore = useAuthStore();
 const selectedPlanId = ref(null);
 
-// Definición de los planes con sus detalles
+// PROPIEDAD COMPUTADA: Asegura que el ID del usuario sea reactivo.
+const authenticatedUserId = computed(() => authStore.currentUser?.id || authStore.userId || null);
+
+// Definición de los planes
 const plans = [
   {
     id: 1,
@@ -27,7 +32,7 @@ const plans = [
     id: 3,
     name: "Premium",
     cost: 60,
-    description: "Acceso total y prioritario. Diseñado para profesionales y equipos.",
+    description: "Acciones total y prioritario. Diseñado para profesionales y equipos.",
     benefits: ["Todo lo de Standard", "Funciones Beta exclusivas", "Soporte 24/7 por chat", "Proyectos ilimitados"],
     buttonText: "Suscribirse por $60/mes"
   }
@@ -35,18 +40,25 @@ const plans = [
 
 // --- Lógica de Manejo de la Suscripción Gratuita (Sin PayPal) ---
 
-/**
- * Lógica para manejar la suscripción al plan Free.
- * @param {Object} plan - El objeto del plan seleccionado.
- */
 const handleFreeSubscription = async (plan) => {
+  const userId = authenticatedUserId.value;
+
+  if (!userId) {
+    console.error("🚫 Error de autenticación: El ID del usuario es nulo o indefinido.");
+    alert("Error: El ID del usuario no está disponible. Por favor, inicie sesión nuevamente.");
+    return;
+  }
+
   selectedPlanId.value = plan.id;
 
   const suscriptionData = {
+    userId: String(userId), // 👈 CORRECCIÓN A STRING
     plan: plan.id,
-    payPalTransactionId: `FREE-${Date.now()}`, // ID de transacción mock para plan gratuito
-    statu: 1 // Estado 1: Activa
+    payPalTransactionId: `FREE-${Date.now()}`,
+    statu: 1
   };
+
+  console.log("🚀 PAYLOAD PLAN FREE ENVIADO:", suscriptionData);
 
   try {
     const success = await store.createSuscription(suscriptionData);
@@ -55,11 +67,9 @@ const handleFreeSubscription = async (plan) => {
       alert(`¡Suscripción al plan ${plan.name} activada!`);
     } else {
       alert(`Error al activar el plan Free. Consulta la consola.`);
-      console.error("Errores de Pinia Store:", store.errors);
     }
   } catch (error) {
     alert("Ocurrió un error inesperado.");
-    console.error(error);
   } finally {
     selectedPlanId.value = null;
   }
@@ -68,72 +78,76 @@ const handleFreeSubscription = async (plan) => {
 
 // --- Lógica de Integración de PayPal ---
 
-/**
- * Función para renderizar el botón de PayPal para un plan específico.
- * @param {Object} plan - El objeto del plan seleccionado.
- */
 const renderPayPalButton = (plan) => {
-  // Solo renderiza para planes de pago
-  if (plan.cost <= 0 || !window.paypal) return;
+  if (plan.cost <= 0 || !window.paypal || typeof window.paypal.Buttons !== 'function') return;
 
-  // El contenedor donde se incrustará el botón
+  const userId = authenticatedUserId.value;
+
+  if (!userId) {
+    return;
+  }
+
   const containerId = `paypal-button-container-${plan.id}`;
   const buttonContainer = document.getElementById(containerId);
 
+  // Evita renderizar dos veces
+  if (buttonContainer && buttonContainer.querySelector('iframe')) {
+    return;
+  }
+
   if (buttonContainer) {
+    buttonContainer.innerHTML = '';
+
     window.paypal.Buttons({
-      // 1. Crear Orden: Define el monto y la intención del pago.
       createOrder: (data, actions) => {
         selectedPlanId.value = plan.id;
         return actions.order.create({
           purchase_units: [{
             amount: {
-              currency_code: 'USD', // Asegúrate que la moneda coincida con tu plan
-              value: plan.cost.toFixed(2) // Asegura dos decimales
+              currency_code: 'USD',
+              value: plan.cost.toFixed(2)
             }
           }]
         });
       },
 
-      // 2. Aprobar Orden: Se ejecuta cuando el usuario aprueba el pago en la ventana de PayPal.
       onApprove: async (data, actions) => {
-        // Capturar el pago directamente en el frontend (solo para esta implementación)
-        // En un sistema real, la captura la haría el backend para mayor seguridad.
         const details = await actions.order.capture();
 
         if (details.status === 'COMPLETED') {
-          // El pago fue exitoso, ahora registramos la suscripción en nuestro sistema
-          const payPalTransactionId = details.id; // El ID de la orden de PayPal (o captura)
+          const payPalTransactionId = details.id;
+          const userId = authenticatedUserId.value;
+
+          if (!userId) {
+            console.error("🚫 Error de autenticación: User ID no disponible después de la aprobación de PayPal.");
+            alert("Pago aprobado, pero ID de usuario perdido. Contacte soporte con ID de transacción: " + payPalTransactionId);
+            return;
+          }
 
           const suscriptionData = {
+            userId: String(userId), // 👈 CORRECCIÓN A STRING
             plan: plan.id,
             payPalTransactionId: payPalTransactionId,
-            statu: 1 // Estado 1: Activa/Pagada
+            statu: 1
           };
 
-          try {
-            // Llama a tu acción de Pinia Store para registrar la suscripción
-            const success = await store.createSuscription(suscriptionData);
+          console.log("💸 PAYLOAD PLAN PAGO ENVIADO:", suscriptionData);
 
+          try {
+            const success = await store.createSuscription(suscriptionData);
             if (success) {
-              alert(`¡Pago y Suscripción al plan ${plan.name} exitosa! ID de Transacción: ${payPalTransactionId}`);
+              alert(`¡Pago y Suscripción al plan ${plan.name} exitosa!`);
             } else {
-              // NOTA: Si falla aquí, el usuario ya pagó. Deberías tener un mecanismo
-              // para resolver esto (ej. un webhook o revisión manual).
-              alert(`🚨 ERROR: Pago de PayPal exitoso, pero falló el registro de la suscripción. Contacte a soporte.`);
-              console.error("Errores de Pinia Store:", store.errors);
+              alert(`🚨 ERROR: Pago de PayPal exitoso, pero falló el registro de la suscripción. Consulte la consola.`);
             }
           } catch (error) {
             alert("Ocurrió un error al registrar la suscripción.");
-            console.error(error);
           }
         } else {
           alert('El pago de PayPal no se completó (estado: ' + details.status + ').');
         }
         selectedPlanId.value = null;
       },
-
-      // Manejo de cancelación y errores
       onCancel: () => {
         selectedPlanId.value = null;
       },
@@ -142,19 +156,57 @@ const renderPayPalButton = (plan) => {
         alert('Ocurrió un error con el proceso de pago. Intente nuevamente.');
         selectedPlanId.value = null;
       }
-    }).render(`#${containerId}`); // Renderiza el botón en el contenedor
+    }).render(`#${containerId}`);
   }
 };
 
-// Se ejecuta después de que el componente ha sido montado.
+const attemptRenderPayPalButtons = () => {
+  if (!window.paypal || typeof window.paypal.Buttons !== 'function') {
+    return false;
+  }
+
+  if (!authenticatedUserId.value) {
+    return false;
+  }
+
+  plans.filter(p => p.cost > 0).forEach(renderPayPalButton);
+  return true;
+};
+
+
+// --- Ciclo de Vida y Observación ---
+
+let paypalCheckInterval = null;
+
 onMounted(() => {
-  // Pequeño chequeo para asegurarnos que el SDK de PayPal se haya cargado
-  const checkPayPalLoaded = setInterval(() => {
-    if (window.paypal) {
-      clearInterval(checkPayPalLoaded);
-      plans.filter(p => p.cost > 0).forEach(renderPayPalButton);
+  if (attemptRenderPayPalButtons()) {
+    return;
+  }
+
+  if (!paypalCheckInterval) {
+    paypalCheckInterval = setInterval(() => {
+      if (attemptRenderPayPalButtons()) {
+        clearInterval(paypalCheckInterval);
+        paypalCheckInterval = null;
+      }
+    }, 300);
+  }
+});
+
+watch(authenticatedUserId, (newUserId) => {
+  if (newUserId) {
+    console.log(`[AUTH] ID de usuario cargado: ${newUserId}. Intentando renderizar PayPal.`);
+    if (attemptRenderPayPalButtons() && paypalCheckInterval) {
+      clearInterval(paypalCheckInterval);
+      paypalCheckInterval = null;
     }
-  }, 100);
+  }
+});
+
+onUnmounted(() => {
+  if (paypalCheckInterval) {
+    clearInterval(paypalCheckInterval);
+  }
 });
 </script>
 
@@ -190,22 +242,36 @@ onMounted(() => {
         <template v-if="plan.cost === 0">
           <button
               @click="handleFreeSubscription(plan)"
-              :disabled="store.loading && selectedPlanId === plan.id"
+              :disabled="store.loading && selectedPlanId === plan.id || !authenticatedUserId"
               class="subscribe-button"
           >
-            <span v-if="store.loading && selectedPlanId === plan.id">Procesando...</span>
+            <span v-if="!authenticatedUserId">Iniciar sesión para activar</span>
+            <span v-else-if="store.loading && selectedPlanId === plan.id">Procesando...</span>
             <span v-else>{{ plan.buttonText }}</span>
           </button>
         </template>
+
         <template v-else>
           <div
               :id="`paypal-button-container-${plan.id}`"
-              :style="{ minHeight: store.loading && selectedPlanId === plan.id ? '50px' : 'auto' }"
+              :style="{ minHeight: '50px' }"
               class="paypal-button-wrapper"
           >
-            <div v-if="store.loading && selectedPlanId === plan.id" class="paypal-loading-overlay">
+            <div
+                v-show="store.loading && selectedPlanId === plan.id"
+                class="paypal-loading-overlay"
+            >
               Procesando Pago...
             </div>
+
+            <div
+                v-show="!authenticatedUserId && !store.loading && !attemptRenderPayPalButtons()"
+                class="paypal-loading-overlay"
+                style="background: #e3f2fd; color: #1976d2;"
+            >
+              Por favor, inicia sesión para suscribirte.
+            </div>
+
           </div>
         </template>
 
@@ -220,8 +286,9 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
 <style scoped>
-/* --- Estilos del Componente --- */
+/* --- Estilos (Mantenidos) --- */
 
 .subscription-view {
   font-family: Arial, sans-serif;
@@ -229,10 +296,10 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
 }
-/* Añadir estilos para el contenedor de PayPal */
+
 .paypal-button-wrapper {
   margin-top: 30px;
-  min-height: 50px; /* Espacio para el botón de PayPal */
+  min-height: 50px;
   position: relative;
 }
 
@@ -250,14 +317,8 @@ onMounted(() => {
   color: #007bff;
   border-radius: 8px;
   z-index: 10;
-}
-
-/* El resto de tus estilos */
-.subscription-view {
-  font-family: Arial, sans-serif;
-  padding: 40px 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 10px;
+  text-align: center;
 }
 
 .header {
@@ -318,7 +379,7 @@ onMounted(() => {
 }
 
 .featured h2 {
-  color: #ffc107; /* Color de acento para el destacado */
+  color: #ffc107;
 }
 
 .cost {
@@ -342,13 +403,13 @@ onMounted(() => {
   color: #777;
   margin-bottom: 25px;
   text-align: center;
-  min-height: 40px; /* Para alinear un poco mejor si las descripciones varían */
+  min-height: 40px;
 }
 
 .benefits {
   list-style: none;
   padding: 0;
-  margin-bottom: auto; /* Empuja el botón hacia abajo */
+  margin-bottom: auto;
   flex-grow: 1;
 }
 

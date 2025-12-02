@@ -19,6 +19,14 @@ export class UsersAssembler {
         };
     }
 
+    static toRoleFromResponse(response) {
+        // Extrae directamente los datos esperados
+        return {
+            userId: response.data.userId,
+            role: response.data.role
+        };
+    }
+
     static toEntitiesFromResponse(response) {
         const resources = Array.isArray(response.data)
             ? response.data
