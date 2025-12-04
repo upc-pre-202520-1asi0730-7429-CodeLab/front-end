@@ -55,10 +55,15 @@ const fetchHotelDetails = async () => {
     }
 
     if (roomsResponse && Array.isArray(roomsResponse.data)) {
-      rooms.value = roomsResponse.data;
+
+      rooms.value = roomsResponse.data.filter(
+          room => room.hotelId === Number(hotelId)
+      );
+
     } else {
       rooms.value = [];
     }
+
 
   } catch (err) {
     console.error('Error al obtener datos:', err);
