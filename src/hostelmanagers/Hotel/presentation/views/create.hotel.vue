@@ -6,30 +6,23 @@ import useHotelStore from "../../application/hotel.store.js";
 const store = useHotelStore();
 const router = useRouter();
 
-// Configuración de Cloudinary
-// ⚠️ IMPORTANTE: Reemplaza estos valores por los tuyos
-const CLOUD_NAME = 'doekyziqa'; // Tu Cloud Name
-const UPLOAD_PRESET = 'hotel_unsigned_upload'; // 👈 ¡REEMPLAZA ESTO por tu preset NO FIRMADO!
+const CLOUD_NAME = 'doekyziqa';
+const UPLOAD_PRESET = 'hotel_unsigned_upload';
 
 const form = ref({
   name: "",
-  images: "", // Aquí se guardará la URL final de Cloudinary
+  images: "",
   address: "",
   phone: "",
   userId: 0
 });
 
-// Referencia para almacenar el archivo de imagen seleccionado
 const imageFile = ref(null);
-
 const error = ref("");
 const success = ref("");
-
-// Comprobamos si el formulario está siendo procesado (incluye la subida de imagen)
 const isSubmitting = computed(() => store.loading);
 
 onMounted(() => {
-  // 1. Obtener el userId del almacenamiento local
   const raw = localStorage.getItem("currentUser");
   if (raw) {
     try {
@@ -43,23 +36,16 @@ onMounted(() => {
   }
 });
 
-// Función que se activa cuando se selecciona un archivo
 const onFileSelected = (event) => {
   const file = event.target.files[0];
   if (file) {
     imageFile.value = file;
-    // Si se selecciona un archivo, limpiamos el campo de URL manual (opcional)
     form.value.images = '';
   }
 };
 
-/**
- * Sube la imagen seleccionada a Cloudinary.
- * @returns {Promise<string>} La URL segura y corta de la imagen subida.
- */
 const uploadImageToCloudinary = async () => {
   if (!imageFile.value) {
-    // Si no hay archivo, devolvemos lo que esté en el campo images (URL manual)
     return form.value.images;
   }
 
@@ -81,14 +67,13 @@ const uploadImageToCloudinary = async () => {
     }
 
     const data = await response.json();
-    return data.secure_url; // La URL corta y directa
+    return data.secure_url;
   } catch (e) {
     console.error("Cloudinary Upload Error:", e);
     error.value = `Error al subir la imagen: ${e.message || 'Verifica el Cloud Name y el Preset.'}`;
-    throw e; // Relanzamos para detener la creación del hotel
+    throw e;
   }
 };
-
 
 const handleCreate = async () => {
   error.value = "";
@@ -99,22 +84,19 @@ const handleCreate = async () => {
     return;
   }
 
-  // 0. GESTIONAR SUBIDA DE IMAGEN
   let finalImageUrl = form.value.images;
 
   if (imageFile.value) {
-    // Usamos el loading del store mientras se sube
     store.loading = true;
     try {
       finalImageUrl = await uploadImageToCloudinary();
     } catch (e) {
       store.loading = false;
-      return; // Detener si la subida falla
+      return;
     }
     store.loading = false;
   }
 
-  // 1. CONSTRUCCIÓN FINAL: Usamos la URL obtenida (subida o manual)
   const hotelData = {
     ...form.value,
     images: finalImageUrl,
@@ -125,7 +107,6 @@ const handleCreate = async () => {
   if (ok) {
     success.value = "Hotel creado correctamente. Redirigiendo...";
 
-    // Limpiar el formulario y redirigir
     form.value = {
       name: "",
       images: "",
@@ -133,7 +114,7 @@ const handleCreate = async () => {
       phone: "",
       userId: form.value.userId
     };
-    imageFile.value = null; // Limpiar la referencia del archivo
+    imageFile.value = null;
 
     setTimeout(() => {
       router.push("/hotels/delete");
@@ -149,209 +130,436 @@ const goBack = () => router.push({ name: "hotel-list" });
 </script>
 
 <template>
-  <div class="create-page-container">
-    <div class="form-card-wrapper">
-      <pv-card class="create-form-card">
-
-        <template #title>
-          <div class="card-title-header">
-            <i class="pi pi-plus-circle card-title-icon"></i>
-            Añadir Nuevo Hotel
+  <div class="create-hotel-container">
+    <div class="form-wrapper">
+      <div class="form-card">
+        <div class="card-header">
+          <div class="icon-wrapper">
+            <i class="pi pi-plus-circle"></i>
           </div>
-        </template>
+          <div>
+            <h1 class="card-title">Añadir Nuevo Hotel</h1>
+            <p class="card-subtitle">Expande tu cadena hotelera</p>
+          </div>
+        </div>
 
-        <template #content>
-          <form @submit.prevent="handleCreate" class="create-form">
+        <form @submit.prevent="handleCreate" class="form-content">
+          <div v-if="error" class="alert error-alert">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>{{ error }}</span>
+          </div>
 
-            <div class="form-field-group">
-              <pv-float-label>
-                <pv-input-text id="name" v-model="form.name" required class="full-width-input" :disabled="isSubmitting" />
-                <label for="name">Nombre del Hotel</label>
-              </pv-float-label>
-            </div>
+          <div v-if="success" class="alert success-alert">
+            <i class="pi pi-check-circle"></i>
+            <span>{{ success }}</span>
+          </div>
 
-            <div class="form-field-group">
-              <label for="images-upload" class="image-upload-label">
-                URL de Imagen o Subir Archivo
-              </label>
+          <div class="form-section">
+            <label class="section-label">
+              <i class="pi pi-building"></i>
+              Nombre del Hotel
+            </label>
+            <pv-input-text
+                v-model="form.name"
+                required
+                class="input-field"
+                :disabled="isSubmitting"
+                placeholder="Ej: Hotel Vista al Mar"
+            />
+          </div>
 
-              <pv-float-label>
-                <pv-input-text
-                    id="images"
-                    v-model="form.images"
-                    :disabled="isSubmitting || !!imageFile"
-                    placeholder="Pega una URL (si no subes archivo)"
-                    class="full-width-input"
+          <div class="form-section image-section">
+            <label class="section-label">
+              <i class="pi pi-image"></i>
+              Imagen Principal
+            </label>
+
+            <div class="image-input-wrapper">
+              <pv-input-text
+                  v-model="form.images"
+                  :disabled="isSubmitting || !!imageFile"
+                  placeholder="Pega una URL de imagen"
+                  class="input-field"
+              />
+
+              <div class="divider">
+                <span>O</span>
+              </div>
+
+              <div class="file-upload-area">
+                <input
+                    type="file"
+                    accept="image/*"
+                    @change="onFileSelected"
+                    :disabled="isSubmitting"
+                    id="file-input"
+                    hidden
                 />
-                <label for="images">URL de Imagen</label>
-              </pv-float-label>
+                <label for="file-input" class="file-upload-label">
+                  <i class="pi pi-cloud-upload"></i>
+                  <span>Subir desde tu dispositivo</span>
+                </label>
+              </div>
 
-              <input
-                  type="file"
-                  id="images-upload"
-                  accept="image/*"
-                  @change="onFileSelected"
-                  :disabled="isSubmitting"
-                  class="file-input-style"
-              />
-
-              <small v-if="imageFile" class="p-error">
-                Archivo seleccionado: {{ imageFile.name }}. Se subirá al crear.
-              </small>
+              <div v-if="imageFile" class="file-selected">
+                <i class="pi pi-check-circle"></i>
+                <span>{{ imageFile.name }}</span>
+              </div>
             </div>
-            <div class="form-field-group">
-              <pv-float-label>
-                <pv-input-text id="address" v-model="form.address" required class="full-width-input" :disabled="isSubmitting" />
-                <label for="address">Dirección</label>
-              </pv-float-label>
-            </div>
+          </div>
 
-            <div class="form-field-group">
-              <pv-float-label>
-                <pv-input-text id="phone" v-model="form.phone" required class="full-width-input" :disabled="isSubmitting" />
-                <label for="phone">Teléfono</label>
-              </pv-float-label>
-            </div>
+          <div class="form-section">
+            <label class="section-label">
+              <i class="pi pi-map-marker"></i>
+              Dirección
+            </label>
+            <pv-input-text
+                v-model="form.address"
+                required
+                class="input-field"
+                :disabled="isSubmitting"
+                placeholder="Calle, Ciudad, País"
+            />
+          </div>
 
-            <input type="hidden" :value="form.userId" name="userId" />
+          <div class="form-section">
+            <label class="section-label">
+              <i class="pi pi-phone"></i>
+              Teléfono de Contacto
+            </label>
+            <pv-input-text
+                v-model="form.phone"
+                required
+                class="input-field"
+                :disabled="isSubmitting"
+                placeholder="+1 234 567 8900"
+            />
+          </div>
 
-            <div class="form-actions-group">
-              <pv-button
-                  type="button"
-                  label="Cancelar"
-                  icon="pi pi-arrow-left"
-                  severity="secondary"
-                  @click="goBack"
-                  class="p-button-outlined"
-                  :disabled="isSubmitting"
-              />
-              <pv-button
-                  type="submit"
-                  label="Crear Hotel"
-                  icon="pi pi-check"
-                  class="p-button-primary"
-                  :loading="isSubmitting"
-                  :disabled="!form.name || !form.userId || (!form.images && !imageFile)"
-              />
-            </div>
-          </form>
-
-        </template>
-      </pv-card>
-
-      <div class="feedback-messages">
-        <pv-message v-if="success" severity="success" :life="3000">{{ success }}</pv-message>
-        <pv-message v-if="error" severity="error" :life="5000">{{ error }}</pv-message>
+          <div class="form-actions">
+            <pv-button
+                type="button"
+                label="Cancelar"
+                icon="pi pi-arrow-left"
+                class="btn-cancel"
+                @click="goBack"
+                :disabled="isSubmitting"
+            />
+            <pv-button
+                type="submit"
+                label="Crear Hotel"
+                icon="pi pi-check"
+                class="btn-submit"
+                :loading="isSubmitting"
+                :disabled="!form.name || !form.userId || (!form.images && !imageFile)"
+            />
+          </div>
+        </form>
       </div>
-
     </div>
   </div>
 </template>
 
 <style scoped>
-/* -------------------------------------- */
-/* CONTENEDOR PRINCIPAL Y CENTRADO */
-/* -------------------------------------- */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
-.create-page-container {
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.create-hotel-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 50%, #6ee7b7 100%);
   padding: 2rem;
-  min-height: 90vh;
-  background-color: #f8f9fa;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-.form-card-wrapper {
+.form-wrapper {
   width: 100%;
-  max-width: 30rem;
+  max-width: 650px;
+  animation: fadeInScale 0.5s ease-out;
 }
 
-.create-form-card {
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
-  border-radius: 0.75rem;
-  background-color: #ffffff;
+.form-card {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-/* -------------------------------------- */
-/* ENCABEZADO DE LA TARJETA */
-/* -------------------------------------- */
-
-.card-title-header {
+.card-header {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  padding: 2.5rem 2rem;
   display: flex;
   align-items: center;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #dee2e6;
-  font-size: 1.5rem;
-  color: #343a40;
-  font-weight: 600;
+  gap: 1.5rem;
+  color: white;
 }
 
-.card-title-icon {
-  margin-right: 0.75rem;
-  color: #28a745;
+.icon-wrapper {
+  width: 70px;
+  height: 70px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-wrapper i {
+  font-size: 2rem;
+}
+
+.card-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+
+.card-subtitle {
+  font-size: 0.95rem;
+  margin: 0;
+  opacity: 0.9;
+}
+
+.form-content {
+  padding: 2rem;
+}
+
+.alert {
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: slideUp 0.3s ease-out;
+}
+
+.error-alert {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-left: 4px solid #ef4444;
+  color: #991b1b;
+}
+
+.error-alert i {
+  color: #dc2626;
   font-size: 1.25rem;
 }
 
-/* Modificamos el padding interno de la tarjeta (uso de :deep) */
-.create-form-card :deep(.p-card-content) {
-  padding-top: 1.5rem;
+.success-alert {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border-left: 4px solid #10b981;
+  color: #065f46;
 }
 
-/* -------------------------------------- */
-/* FORMULARIO Y CAMPOS */
-/* -------------------------------------- */
-
-.create-form {
-  display: grid;
-  gap: 1.5rem;
+.success-alert i {
+  color: #059669;
+  font-size: 1.25rem;
 }
 
-.form-field-group {
+.form-section {
+  margin-bottom: 2rem;
+  animation: slideUp 0.4s ease-out;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.section-label i {
+  color: #10b981;
+}
+
+.input-field {
   width: 100%;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s ease;
+  padding: 0.875rem 1rem;
 }
 
-.full-width-input {
-  width: 100%;
+.input-field:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
 }
 
-/* Estilos específicos para el input de archivo */
-.image-upload-label {
-  display: block;
-  margin-bottom: 0.5rem;
+.image-section {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  padding: 1.5rem;
+  border-radius: 16px;
+}
+
+.image-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.divider {
+  text-align: center;
+  position: relative;
+  margin: 0.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 45%;
+  height: 1px;
+  background: #cbd5e1;
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+.divider span {
+  background: white;
+  padding: 0 1rem;
+  color: #64748b;
   font-size: 0.875rem;
-  color: #6c757d;
   font-weight: 600;
 }
-.file-input-style {
-  display: block;
-  width: 100%;
-  margin-top: 0.5rem;
-}
-.p-error {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: #dc3545; /* Color de error */
-}
 
-/* -------------------------------------- */
-/* BOTONES DE ACCIÓN */
-/* -------------------------------------- */
-
-.form-actions-group {
+.file-upload-label {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: center;
   gap: 0.75rem;
-  margin-top: 1.5rem;
+  padding: 2rem;
+  background: white;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-/* -------------------------------------- */
-/* MENSAJES DE FEEDBACK */
-/* -------------------------------------- */
+.file-upload-label:hover {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
 
-.feedback-messages {
-  margin-top: 1.5rem;
-  display: grid;
-  gap: 0.5rem;
+.file-upload-label i {
+  font-size: 2.5rem;
+  color: #10b981;
+}
+
+.file-upload-label span {
+  color: #475569;
+  font-weight: 600;
+}
+
+.file-selected {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  padding: 0.875rem 1.25rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: slideUp 0.3s ease-out;
+}
+
+.file-selected i {
+  color: #047857;
+  font-size: 1.25rem;
+}
+
+.file-selected span {
+  color: #047857;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 2px solid #f1f5f9;
+}
+
+.btn-cancel,
+.btn-submit {
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.btn-cancel {
+  background: white;
+  border: 2px solid #e2e8f0;
+  color: #475569;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+.btn-submit {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+@media (max-width: 640px) {
+  .create-hotel-container {
+    padding: 1rem;
+  }
+
+  .card-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 2rem 1.5rem;
+  }
+
+  .form-content {
+    padding: 1.5rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
 }
 </style>

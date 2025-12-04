@@ -7,10 +7,8 @@ const store = useSuscriptionStore();
 const authStore = useAuthStore();
 const selectedPlanId = ref(null);
 
-// PROPIEDAD COMPUTADA: Asegura que el ID del usuario sea reactivo.
 const authenticatedUserId = computed(() => authStore.currentUser?.id || authStore.userId || null);
 
-// Definición de los planes
 const plans = [
   {
     id: 1,
@@ -18,7 +16,9 @@ const plans = [
     cost: 0,
     description: "Acceso básico a funciones limitadas. Ideal para probar la plataforma.",
     benefits: ["Acceso a contenido gratuito", "Soporte comunitario", "1 proyecto activo"],
-    buttonText: "Activar Plan Free"
+    buttonText: "Activar Plan Free",
+    icon: "pi-gift",
+    gradient: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)"
   },
   {
     id: 2,
@@ -26,7 +26,10 @@ const plans = [
     cost: 40,
     description: "Funciones avanzadas para usuarios activos. La mejor opción para la mayoría.",
     benefits: ["Todo lo de Free", "Contenido exclusivo", "Soporte prioritario por email", "5 proyectos activos"],
-    buttonText: "Suscribirse por $40/mes"
+    buttonText: "Suscribirse por $40/mes",
+    icon: "pi-star",
+    gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+    popular: true
   },
   {
     id: 3,
@@ -34,11 +37,11 @@ const plans = [
     cost: 60,
     description: "Acciones total y prioritario. Diseñado para profesionales y equipos.",
     benefits: ["Todo lo de Standard", "Funciones Beta exclusivas", "Soporte 24/7 por chat", "Proyectos ilimitados"],
-    buttonText: "Suscribirse por $60/mes"
+    buttonText: "Suscribirse por $60/mes",
+    icon: "pi-crown",
+    gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
   }
 ];
-
-// --- Lógica de Manejo de la Suscripción Gratuita (Sin PayPal) ---
 
 const handleFreeSubscription = async (plan) => {
   const userId = authenticatedUserId.value;
@@ -52,13 +55,11 @@ const handleFreeSubscription = async (plan) => {
   selectedPlanId.value = plan.id;
 
   const suscriptionData = {
-    userId: String(userId), // 👈 CORRECCIÓN A STRING
+    userId: String(userId),
     plan: plan.id,
     payPalTransactionId: `FREE-${Date.now()}`,
     statu: 1
   };
-
-  console.log("🚀 PAYLOAD PLAN FREE ENVIADO:", suscriptionData);
 
   try {
     const success = await store.createSuscription(suscriptionData);
@@ -75,9 +76,6 @@ const handleFreeSubscription = async (plan) => {
   }
 };
 
-
-// --- Lógica de Integración de PayPal ---
-
 const renderPayPalButton = (plan) => {
   if (plan.cost <= 0 || !window.paypal || typeof window.paypal.Buttons !== 'function') return;
 
@@ -90,7 +88,6 @@ const renderPayPalButton = (plan) => {
   const containerId = `paypal-button-container-${plan.id}`;
   const buttonContainer = document.getElementById(containerId);
 
-  // Evita renderizar dos veces
   if (buttonContainer && buttonContainer.querySelector('iframe')) {
     return;
   }
@@ -125,13 +122,11 @@ const renderPayPalButton = (plan) => {
           }
 
           const suscriptionData = {
-            userId: String(userId), // 👈 CORRECCIÓN A STRING
+            userId: String(userId),
             plan: plan.id,
             payPalTransactionId: payPalTransactionId,
             statu: 1
           };
-
-          console.log("💸 PAYLOAD PLAN PAGO ENVIADO:", suscriptionData);
 
           try {
             const success = await store.createSuscription(suscriptionData);
@@ -173,9 +168,6 @@ const attemptRenderPayPalButtons = () => {
   return true;
 };
 
-
-// --- Ciclo de Vida y Observación ---
-
 let paypalCheckInterval = null;
 
 onMounted(() => {
@@ -195,7 +187,6 @@ onMounted(() => {
 
 watch(authenticatedUserId, (newUserId) => {
   if (newUserId) {
-    console.log(`[AUTH] ID de usuario cargado: ${newUserId}. Intentando renderizar PayPal.`);
     if (attemptRenderPayPalButtons() && paypalCheckInterval) {
       clearInterval(paypalCheckInterval);
       paypalCheckInterval = null;
@@ -211,248 +202,493 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="subscription-view">
-    <header class="header">
-      <h1>Elige el Plan Perfecto para Ti</h1>
-      <p>Comienza hoy y accede a todas las herramientas que necesitas para triunfar.</p>
-    </header>
-
-    <div class="plans-container">
-      <div
-          v-for="plan in plans"
-          :key="plan.id"
-          :class="['plan-card', { 'featured': plan.name === 'Standard' }]"
-      >
-        <div class="plan-header">
-          <h2>{{ plan.name }}</h2>
-          <p class="cost">
-            <span class="price">${{ plan.cost }}</span>
-            <span v-if="plan.cost > 0" class="period">/mes</span>
-          </p>
+  <div class="subscription-container">
+    <div class="hero-section">
+      <div class="hero-content">
+        <div class="hero-icon">
+          <i class="pi pi-sparkles"></i>
         </div>
-
-        <p class="description">{{ plan.description }}</p>
-
-        <ul class="benefits">
-          <li v-for="(benefit, index) in plan.benefits" :key="index">
-            ✅ {{ benefit }}
-          </li>
-        </ul>
-
-        <template v-if="plan.cost === 0">
-          <button
-              @click="handleFreeSubscription(plan)"
-              :disabled="store.loading && selectedPlanId === plan.id || !authenticatedUserId"
-              class="subscribe-button"
-          >
-            <span v-if="!authenticatedUserId">Iniciar sesión para activar</span>
-            <span v-else-if="store.loading && selectedPlanId === plan.id">Procesando...</span>
-            <span v-else>{{ plan.buttonText }}</span>
-          </button>
-        </template>
-
-        <template v-else>
-          <div
-              :id="`paypal-button-container-${plan.id}`"
-              :style="{ minHeight: '50px' }"
-              class="paypal-button-wrapper"
-          >
-            <div
-                v-show="store.loading && selectedPlanId === plan.id"
-                class="paypal-loading-overlay"
-            >
-              Procesando Pago...
-            </div>
-
-            <div
-                v-show="!authenticatedUserId && !store.loading && !attemptRenderPayPalButtons()"
-                class="paypal-loading-overlay"
-                style="background: #e3f2fd; color: #1976d2;"
-            >
-              Por favor, inicia sesión para suscribirte.
-            </div>
-
-          </div>
-        </template>
-
+        <h1 class="hero-title">Elige tu Plan Perfecto</h1>
+        <p class="hero-subtitle">Transforma tu experiencia hotelera con nuestros planes diseñados para ti</p>
       </div>
     </div>
 
-    <div v-if="store.errors.length" class="error-message">
-      <h3>🚨 Error al intentar suscribirse:</h3>
-      <ul>
-        <li v-for="(err, index) in store.errors" :key="index">{{ err.message || 'Error desconocido' }}</li>
-      </ul>
+    <div class="plans-wrapper">
+      <div
+          v-for="plan in plans"
+          :key="plan.id"
+          :class="['plan-card', { 'plan-popular': plan.popular }]"
+      >
+        <div v-if="plan.popular" class="popular-badge">
+          <i class="pi pi-star-fill"></i>
+          <span>Más Popular</span>
+        </div>
+
+        <div class="plan-header" :style="{ background: plan.gradient }">
+          <div class="plan-icon">
+            <i :class="['pi', plan.icon]"></i>
+          </div>
+          <h2 class="plan-name">{{ plan.name }}</h2>
+        </div>
+
+        <div class="plan-body">
+          <div class="plan-price">
+            <span class="currency">$</span>
+            <span class="amount">{{ plan.cost }}</span>
+            <span v-if="plan.cost > 0" class="period">/mes</span>
+            <span v-else class="period">Gratis</span>
+          </div>
+
+          <p class="plan-description">{{ plan.description }}</p>
+
+          <div class="benefits-section">
+            <h3 class="benefits-title">
+              <i class="pi pi-check-circle"></i>
+              Incluye:
+            </h3>
+            <ul class="benefits-list">
+              <li v-for="(benefit, index) in plan.benefits" :key="index" class="benefit-item">
+                <i class="pi pi-check"></i>
+                <span>{{ benefit }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="plan-action">
+            <template v-if="plan.cost === 0">
+              <button
+                  @click="handleFreeSubscription(plan)"
+                  :disabled="store.loading && selectedPlanId === plan.id || !authenticatedUserId"
+                  class="action-button free-button"
+              >
+                <i v-if="store.loading && selectedPlanId === plan.id" class="pi pi-spin pi-spinner"></i>
+                <i v-else class="pi pi-gift"></i>
+                <span v-if="!authenticatedUserId">Iniciar sesión</span>
+                <span v-else-if="store.loading && selectedPlanId === plan.id">Procesando...</span>
+                <span v-else>{{ plan.buttonText }}</span>
+              </button>
+            </template>
+
+            <template v-else>
+              <div
+                  :id="`paypal-button-container-${plan.id}`"
+                  class="paypal-container"
+              >
+                <div
+                    v-show="store.loading && selectedPlanId === plan.id"
+                    class="paypal-overlay loading"
+                >
+                  <i class="pi pi-spin pi-spinner"></i>
+                  <span>Procesando Pago...</span>
+                </div>
+
+                <div
+                    v-show="!authenticatedUserId && !store.loading"
+                    class="paypal-overlay auth-required"
+                >
+                  <i class="pi pi-lock"></i>
+                  <span>Inicia sesión para suscribirte</span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="store.errors.length" class="error-section">
+      <div class="error-card">
+        <i class="pi pi-exclamation-triangle"></i>
+        <h3>Error al procesar suscripción</h3>
+        <ul>
+          <li v-for="(err, index) in store.errors" :key="index">
+            {{ err.message || 'Error desconocido' }}
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* --- Estilos (Mantenidos) --- */
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
-.subscription-view {
-  font-family: Arial, sans-serif;
-  padding: 40px 20px;
-  max-width: 1200px;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.subscription-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background-size: 200% 200%;
+  animation: gradient 15s ease infinite;
+  padding: 2rem;
+}
+
+.hero-section {
+  text-align: center;
+  padding: 3rem 1rem;
+  margin-bottom: 3rem;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.hero-content {
+  max-width: 800px;
   margin: 0 auto;
 }
 
-.paypal-button-wrapper {
-  margin-top: 30px;
-  min-height: 50px;
+.hero-icon {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 2rem;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: float 3s ease-in-out infinite;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.hero-icon i {
+  font-size: 3.5rem;
+  color: white;
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 1rem;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  font-weight: 300;
+}
+
+.plans-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.plan-card {
+  background: white;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  transition: all 0.4s ease;
+  animation: scaleIn 0.5s ease-out;
   position: relative;
 }
 
-.paypal-loading-overlay {
+.plan-card:hover {
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.plan-popular {
+  border: 3px solid #fbbf24;
+}
+
+.popular-badge {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+  z-index: 10;
+}
+
+.plan-header {
+  padding: 3rem 2rem 2rem;
+  text-align: center;
+  color: white;
+  position: relative;
+}
+
+.plan-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+.plan-icon i {
+  font-size: 2.5rem;
+}
+
+.plan-name {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.plan-body {
+  padding: 2rem;
+}
+
+.plan-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 16px;
+}
+
+.currency {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0369a1;
+}
+
+.amount {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #0c4a6e;
+}
+
+.period {
+  font-size: 1.125rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.plan-description {
+  font-size: 1rem;
+  color: #64748b;
+  text-align: center;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.benefits-section {
+  margin-bottom: 2rem;
+}
+
+.benefits-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.benefits-title i {
+  color: #10b981;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.benefit-item:last-child {
+  border-bottom: none;
+}
+
+.benefit-item i {
+  color: #10b981;
+  font-size: 1.125rem;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.benefit-item span {
+  color: #475569;
+  line-height: 1.5;
+}
+
+.plan-action {
+  margin-top: 2rem;
+}
+
+.action-button {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.free-button {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+}
+
+.free-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 25px rgba(99, 102, 241, 0.4);
+}
+
+.free-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.paypal-container {
+  min-height: 50px;
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.paypal-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: #007bff;
-  border-radius: 8px;
-  z-index: 10;
-  padding: 10px;
-  text-align: center;
-}
-
-.header {
-  text-align: center;
-  margin-bottom: 50px;
-}
-
-.header h1 {
-  font-size: 2.5rem;
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.header p {
-  font-size: 1.1rem;
-  color: #666;
-}
-
-.plans-container {
-  display: flex;
-  gap: 30px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.plan-card {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 30px;
-  width: 100%;
-  max-width: 350px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s, box-shadow 0.3s;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  border-radius: 14px;
+  z-index: 10;
 }
 
-.plan-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+.paypal-overlay.loading {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
 }
 
-.featured {
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px #007bff50, 0 8px 25px rgba(0, 0, 0, 0.15);
+.paypal-overlay.auth-required {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
 }
 
-.plan-header {
-  margin-bottom: 20px;
+.paypal-overlay i {
+  font-size: 1.5rem;
+}
+
+.error-section {
+  max-width: 600px;
+  margin: 3rem auto 0;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.error-card {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border-left: 4px solid #ef4444;
+}
+
+.error-card i {
+  font-size: 3rem;
+  color: #dc2626;
+  display: block;
   text-align: center;
+  margin-bottom: 1rem;
 }
 
-.plan-header h2 {
-  font-size: 1.8rem;
-  color: #007bff;
-  margin-bottom: 10px;
-}
-
-.featured h2 {
-  color: #ffc107;
-}
-
-.cost {
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: #333;
-}
-
-.price {
-  margin-right: 5px;
-}
-
-.period {
-  font-size: 1rem;
-  font-weight: normal;
-  color: #888;
-}
-
-.description {
-  font-size: 1rem;
-  color: #777;
-  margin-bottom: 25px;
+.error-card h3 {
   text-align: center;
-  min-height: 40px;
+  color: #991b1b;
+  margin: 0 0 1rem;
 }
 
-.benefits {
+.error-card ul {
   list-style: none;
   padding: 0;
-  margin-bottom: auto;
-  flex-grow: 1;
+  margin: 0;
 }
 
-.benefits li {
-  margin-bottom: 10px;
-  color: #555;
-  line-height: 1.5;
+.error-card li {
+  padding: 0.5rem 0;
+  color: #dc2626;
 }
 
-.subscribe-button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s, opacity 0.3s;
-  margin-top: 30px;
-  width: 100%;
-}
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2rem;
+  }
 
-.subscribe-button:hover:not(:disabled) {
-  background-color: #0056b3;
-}
+  .hero-subtitle {
+    font-size: 1rem;
+  }
 
-.subscribe-button:disabled {
-  background-color: #a0c3e8;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
+  .plans-wrapper {
+    grid-template-columns: 1fr;
+  }
 
-.error-message {
-  margin-top: 40px;
-  padding: 20px;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  color: #721c24;
-  border-radius: 8px;
-}
-
-.error-message h3 {
-  margin-top: 0;
+  .amount {
+    font-size: 2.5rem;
+  }
 }
 </style>

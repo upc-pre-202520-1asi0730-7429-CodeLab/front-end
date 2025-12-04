@@ -1,30 +1,38 @@
 <template>
   <div class="layout-con-sidebar">
-
     <aside class="sidebar">
-      <div class="sidebar-title">
-        <h3>Menú Principal</h3>
-        <small v-if="userStore.currentUser">
-          Usuario: **{{ userStore.currentUser.username }}**
-          <span v-if="isLoadingData" style="font-style: italic;"> (Verificando acceso...)</span>
-        </small>
+      <div class="sidebar-header">
+        <div class="logo-wrapper">
+          <i class="pi pi-building"></i>
+        </div>
+        <div class="brand-info">
+          <h3 class="brand-title">Hotel Manager</h3>
+          <small v-if="userStore.currentUser" class="user-info">
+            <i class="pi pi-user"></i>
+            {{ userStore.currentUser.username }}
+            <span v-if="isLoadingData" class="loading-badge">
+              <i class="pi pi-spin pi-spinner"></i>
+            </span>
+          </small>
+        </div>
       </div>
 
-      <nav>
+      <nav class="sidebar-nav">
         <ul class="menu-list" v-if="!isLoadingData || !userStore.currentUser">
           <template v-if="userStore.currentUser">
+
+            <li v-if="hasManagementAccess" class="menu-section">
+              <span class="section-title">
+                <i class="pi pi-briefcase"></i>
+                Gestión
+              </span>
+            </li>
 
             <li v-if="hasManagementAccess">
               <RouterLink to="/hotels" class="menu-item">
                 <i class="pi pi-building"></i>
                 <span>Mis Hoteles</span>
-              </RouterLink>
-            </li>
-
-            <li v-if="isClientRole">
-              <RouterLink to="/hotels_user" class="menu-item">
-                <i class="pi pi-building"></i>
-                <span>Buscar y Ver Hoteles</span>
+                <i class="pi pi-angle-right arrow"></i>
               </RouterLink>
             </li>
 
@@ -32,62 +40,91 @@
               <RouterLink to="/rooms" class="menu-item">
                 <i class="pi pi-home"></i>
                 <span>Mis Habitaciones</span>
+                <i class="pi pi-angle-right arrow"></i>
               </RouterLink>
             </li>
-
 
             <li v-if="hasManagementAccess">
               <RouterLink to="/reservations/admin" class="menu-item">
                 <i class="pi pi-calendar"></i>
                 <span>Reservas</span>
+                <i class="pi pi-angle-right arrow"></i>
+              </RouterLink>
+            </li>
+
+            <li v-if="isClientRole" class="menu-section">
+              <span class="section-title">
+                <i class="pi pi-compass"></i>
+                Explorar
+              </span>
+            </li>
+
+            <li v-if="isClientRole">
+              <RouterLink to="/hotels_user" class="menu-item">
+                <i class="pi pi-search"></i>
+                <span>Buscar Hoteles</span>
+                <i class="pi pi-angle-right arrow"></i>
               </RouterLink>
             </li>
 
             <li v-if="isClientRole">
               <RouterLink to="/reservations" class="menu-item">
-                <i class="pi pi-calendar"></i>
-                <span>Ver Reservas</span>
+                <i class="pi pi-calendar-plus"></i>
+                <span>Mis Reservas</span>
+                <i class="pi pi-angle-right arrow"></i>
               </RouterLink>
             </li>
 
-            <li class="menu-separator"></li>
+            <li class="menu-divider"></li>
+
+            <li v-if="!isClientRole" class="menu-section">
+              <span class="section-title">
+                <i class="pi pi-cog"></i>
+                Configuración
+              </span>
+            </li>
 
             <li v-if="!isClientRole">
               <RouterLink to="/subscriptions" class="menu-item">
                 <i class="pi pi-credit-card"></i>
                 <span>Mi Suscripción</span>
+                <i class="pi pi-angle-right arrow"></i>
               </RouterLink>
             </li>
 
-            <li v-if="!hasManagementAccess && !isClientRole && !isLoadingData">
-                <span style="display: block; padding: 10px; font-size: 0.75rem; color: #dc3545; text-align: center;">
-                    Crea tu suscripción para acceder a los módulos de gestión.
-                </span>
+            <li v-if="!hasManagementAccess && !isClientRole && !isLoadingData" class="subscription-alert">
+              <div class="alert-content">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>Crea tu suscripción para acceder a los módulos de gestión</span>
+              </div>
             </li>
-
-
-            <li class="menu-separator"></li>
 
             <li v-if="!isClientRole">
               <RouterLink to="/profile" class="menu-item">
                 <i class="pi pi-user"></i>
                 <span>Mi Perfil</span>
+                <i class="pi pi-angle-right arrow"></i>
               </RouterLink>
             </li>
 
+            <li class="menu-divider"></li>
+
             <li>
-              <a href="#" @click.prevent="handleLogout" class="menu-item logout">
+              <a href="#" @click.prevent="handleLogout" class="menu-item logout-item">
                 <i class="pi pi-sign-out"></i>
                 <span>Cerrar Sesión</span>
+                <i class="pi pi-angle-right arrow"></i>
               </a>
             </li>
           </template>
         </ul>
 
-        <div v-if="isLoadingData && userStore.currentUser" style="text-align: center; padding: 20px;">
-          Verificando acceso...
+        <div v-if="isLoadingData && userStore.currentUser" class="loading-overlay">
+          <div class="loading-content">
+            <i class="pi pi-spin pi-spinner"></i>
+            <p>Verificando acceso...</p>
+          </div>
         </div>
-
       </nav>
     </aside>
 
@@ -100,7 +137,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { RouterView, RouterLink } from 'vue-router';
-// ⚠️ AJUSTA ESTAS RUTAS DE IMPORTACIÓN A TU ESTRUCTURA REAL
 import useUserStore from '../../../hostelmanagers/IAM/application/user.store.js';
 import {SuscriptionsApi} from "../../../hostelmanagers/Subscription/Infrastructure/subscription-api.js";
 import {UsersApi} from "../../../hostelmanagers/IAM/infrastructure/user-api.js";
@@ -111,8 +147,6 @@ const suscriptionsApi = new SuscriptionsApi();
 
 const isLoadingData = ref(true);
 const hasActiveSuscription = ref(false);
-
-// --- 1. Lógica de Obtención de Datos ---
 
 const fetchAndSetUserRole = async (userId) => {
   try {
@@ -128,15 +162,10 @@ const fetchAndSetUserRole = async (userId) => {
   }
 };
 
-/**
- * Verifica la suscripción del usuario.
- */
 const checkUserSuscription = async (userId) => {
   try {
     const response = await suscriptionsApi.getAllSuscriptions();
     const allSuscriptions = Array.isArray(response.data) ? response.data : [];
-
-    // Aseguramos que ambos userId sean tratados como strings para la comparación.
     const found = allSuscriptions.find(s => String(s.userId) === String(userId));
 
     hasActiveSuscription.value = !!found;
@@ -146,14 +175,11 @@ const checkUserSuscription = async (userId) => {
     } else {
       console.log(`[Suscripción] Suscripción activa encontrada para el usuario ${userId}.`);
     }
-
   } catch (error) {
     console.error('Error al obtener la lista completa de suscripciones:', error);
     hasActiveSuscription.value = false;
   }
 };
-
-// --- 2. Ciclo de Vida ---
 
 onMounted(async () => {
   isLoadingData.value = true;
@@ -174,7 +200,6 @@ onMounted(async () => {
           await fetchAndSetUserRole(user.id);
         }
 
-        // Solo verificamos la suscripción si no es Cliente
         if (user.role !== 'Client') {
           await checkUserSuscription(user.id);
         }
@@ -188,30 +213,17 @@ onMounted(async () => {
   isLoadingData.value = false;
 });
 
-// --- 3. Propiedades Computadas para la Validación del Menú ---
-
-/**
- * Retorna true si el rol es 'Client'.
- */
 const isClientRole = computed(() => {
   return userStore.currentUser?.role === 'Client';
 });
 
-/**
- * Retorna true si el usuario (Admin o Manager) tiene acceso de GESTIÓN (con suscripción).
- */
 const hasManagementAccess = computed(() => {
   if (isLoadingData.value) return false;
-
-  // Si es Client, no tiene acceso de gestión (Management).
   if (isClientRole.value) {
     return false;
   }
-
-  // Si no es Client (Admin/Manager), requiere suscripción activa.
   return hasActiveSuscription.value;
 });
-
 
 const handleLogout = () => {
   userStore.logout();
@@ -220,98 +232,308 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
-/* -------------------------------------- */
-/* LAYOUT BASE Y SIDEBAR */
-/* -------------------------------------- */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 .layout-con-sidebar {
   display: flex;
   width: 100%;
   min-height: 100vh;
+  background: #f8fafc;
 }
 
 .sidebar {
-  width: 240px;
+  width: 280px;
   min-height: 100vh;
-  background-color: #f8f9fa;
-  border-right: 1px solid #dee2e6;
-  padding: 0;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
+  animation: slideIn 0.4s ease-out;
 }
 
-.content-wrapper {
-  flex-grow: 1;
-  padding: 20px;
+.sidebar-header {
+  padding: 2rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+}
+
+.logo-wrapper {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.logo-wrapper i {
+  font-size: 1.75rem;
+  color: white;
+}
+
+.brand-info {
+  color: white;
+}
+
+.brand-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 0.5rem;
+  color: white;
+  letter-spacing: -0.5px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.user-info i {
+  font-size: 0.75rem;
+}
+
+.loading-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+}
+
+.loading-badge i {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.sidebar-nav {
+  flex: 1;
   overflow-y: auto;
+  padding: 1rem 0;
 }
 
-.sidebar-title {
-  padding: 1.5rem 1rem;
-  border-bottom: 1px solid #dee2e6;
-  background-color: #e9ecef;
-}
-
-.sidebar-title h3 {
-  margin: 0 0 0.5rem 0;
-  color: #495057;
-  font-size: 1.1rem;
-}
-
-.sidebar-title small {
-  color: #6c757d;
-  font-size: 0.8rem;
-}
-
-/* -------------------------------------- */
-/* MENÚ Y ENLACES */
-/* -------------------------------------- */
 .menu-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
+.menu-section {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.section-title i {
+  font-size: 0.875rem;
+}
+
 .menu-item {
   display: flex;
   align-items: center;
-  padding: 0.75rem 1rem;
-  color: #495057;
+  gap: 1rem;
+  padding: 0.875rem 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
-  transition: all 0.2s ease;
-  border-left: 3px solid transparent;
-}
-
-.menu-item:hover {
-  background-color: #e9ecef;
-  color: #007bff;
-  border-left-color: #007bff;
-}
-
-.menu-item.router-link-active {
-  background-color: #e3f2fd;
-  color: #1976d2;
-  border-left-color: #1976d2;
+  transition: all 0.3s ease;
+  position: relative;
   font-weight: 500;
 }
 
-.menu-item i {
-  margin-right: 0.75rem;
-  width: 1rem;
-  font-size: 1rem;
+.menu-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+
+.menu-item:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: white;
+}
+
+.menu-item:hover::before {
+  transform: scaleY(1);
+}
+
+.menu-item.router-link-active {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, transparent 100%);
+  color: white;
+  font-weight: 600;
+}
+
+.menu-item.router-link-active::before {
+  transform: scaleY(1);
+}
+
+.menu-item i:first-child {
+  width: 1.25rem;
+  font-size: 1.125rem;
+  text-align: center;
 }
 
 .menu-item span {
   flex: 1;
 }
 
-.menu-item.logout:hover {
-  background-color: #f8d7da;
-  color: #721c24;
-  border-left-color: #dc3545;
+.menu-item .arrow {
+  opacity: 0;
+  transform: translateX(-5px);
+  transition: all 0.3s ease;
+  font-size: 0.875rem;
 }
 
-.menu-separator {
+.menu-item:hover .arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.logout-item {
+  color: rgba(239, 68, 68, 0.8);
+}
+
+.logout-item:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.logout-item:hover::before {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+}
+
+.menu-divider {
   height: 1px;
-  background-color: #dee2e6;
-  margin: 0.5rem 0;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 1rem 1.5rem;
+}
+
+.subscription-alert {
+  margin: 1rem 1.5rem;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.alert-content {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.alert-content i {
+  color: #f87171;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.alert-content span {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.loading-overlay {
+  padding: 2rem;
+  text-align: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loading-content i {
+  font-size: 2rem;
+  color: #3b82f6;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.loading-content p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 240px;
+  }
+
+  .sidebar-header {
+    padding: 1.5rem 1rem;
+  }
+
+  .logo-wrapper {
+    width: 50px;
+    height: 50px;
+  }
+
+  .brand-title {
+    font-size: 1.25rem;
+  }
+
+  .menu-item {
+    padding: 0.75rem 1rem;
+  }
 }
 </style>

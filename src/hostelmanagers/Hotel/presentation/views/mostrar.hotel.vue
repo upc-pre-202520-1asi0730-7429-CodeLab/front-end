@@ -1,14 +1,13 @@
 <script setup>
-import { onMounted, watch, computed } from "vue"; // Importar 'computed'
+import { onMounted, watch, computed } from "vue";
 import useHotelStore from "../../application/hotel.store.js";
 import useUserStore from '../../../IAM/application/user.store.js';
 import { useToast } from 'primevue/usetoast';
 import Tooltip from 'primevue/tooltip';
 
 const store = useHotelStore();
-const userStore = useUserStore();// 👈 INSTANCIA DEL USER STORE
+const userStore = useUserStore();
 const toast = useToast();
-
 const vTooltip = Tooltip;
 
 onMounted(() => {
@@ -29,24 +28,11 @@ watch(
     }
 );
 
-/**
- * Propiedad computada para determinar si el usuario puede modificar/crear hoteles.
- * Es true si el rol NO es 'Client'.
- */
 const canModify = computed(() => {
-  // Si no hay usuario o si el rol no es 'Client', permitimos la modificación.
-  // Asumimos que solo 'Client' debe estar restringido.
   return userStore.currentUser?.role !== 'Client';
 });
 
-
-/**
- * Maneja la eliminación de un hotel dado su ID.
- * @param {number} id - El ID del hotel a eliminar.
- * @param {string} name - El nombre del hotel (para el mensaje).
- */
 const handleDelete = async (id, name) => {
-  // Aseguramos que solo los usuarios autorizados puedan intentar la eliminación
   if (!canModify.value) {
     toast.add({
       severity: 'warn',
@@ -79,30 +65,35 @@ const handleDelete = async (id, name) => {
     });
   }
 };
-
 </script>
 
 <template>
-  <div class="hotels-page-container">
-
+  <div class="hotels-admin-container">
     <pv-toast position="top-right" />
 
-    <div class="page-header-section">
-      <h1 class="page-title-main">
-        <i class="pi pi-building header-icon"></i>
-        Gestión de Hoteles
-      </h1>
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-title-section">
+          <div class="icon-badge">
+            <i class="pi pi-building"></i>
+          </div>
+          <div>
+            <h1 class="page-title">Gestión de Hoteles</h1>
+            <p class="page-subtitle">Administra tu cadena hotelera</p>
+          </div>
+        </div>
 
-      <RouterLink to="/hotels/create" v-if="canModify">
-        <pv-button
-            label="Añadir Nuevo Hotel"
-            icon="pi pi-plus"
-            class="p-button-primary p-button-sm p-button-rounded action-button"
-        />
-      </RouterLink>
+        <RouterLink to="/hotels/create" v-if="canModify" class="create-link">
+          <pv-button
+              label="Añadir Nuevo Hotel"
+              icon="pi pi-plus"
+              class="create-btn"
+          />
+        </RouterLink>
+      </div>
     </div>
 
-    <div class="table-card-wrapper">
+    <div class="table-wrapper">
       <pv-data-table
           :value="store.hotels"
           dataKey="id"
@@ -112,30 +103,33 @@ const handleDelete = async (id, name) => {
           :rows="10"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
           :rowsPerPageOptions="[10, 20, 50]"
-          class="hotels-data-table"
+          class="hotels-table"
       >
         <template #loading>
           <div class="loading-state">
-            <i class="pi pi-spin pi-spinner loading-icon"></i> Cargando datos de hoteles...
+            <div class="loading-spinner">
+              <i class="pi pi-spin pi-spinner"></i>
+            </div>
+            <p>Cargando hoteles...</p>
           </div>
         </template>
 
         <pv-column field="id" header="ID" class="col-id">
           <template #body="{ data }">
-            <span class="id-text">{{ (data.id + '').substring(0, 4) }}...</span>
+            <span class="id-badge">{{ (data.id + '').substring(0, 4) }}...</span>
           </template>
         </pv-column>
 
         <pv-column field="images" header="Imagen" class="col-image">
           <template #body="{ data }">
-            <div v-if="data.images && typeof data.images === 'string'">
+            <div v-if="data.images && typeof data.images === 'string'" class="image-wrapper">
               <img
                   :src="data.images"
                   alt="Imagen del Hotel"
-                  class="hotel-image"
+                  class="hotel-thumbnail"
               />
             </div>
-            <div v-else class="no-image-placeholder">
+            <div v-else class="no-image">
               <i class="pi pi-image"></i>
             </div>
           </template>
@@ -143,186 +137,349 @@ const handleDelete = async (id, name) => {
 
         <pv-column field="name" header="Nombre" :sortable="true">
           <template #body="{ data }">
-            <span class="name-text">{{ data.name }}</span>
+            <span class="hotel-name">{{ data.name }}</span>
           </template>
         </pv-column>
 
-        <pv-column field="address" header="Dirección" class="col-address" />
-        <pv-column field="phone" header="Teléfono" class="col-phone" />
+        <pv-column field="address" header="Dirección" class="col-address">
+          <template #body="{ data }">
+            <div class="address-info">
+              <i class="pi pi-map-marker"></i>
+              <span>{{ data.address }}</span>
+            </div>
+          </template>
+        </pv-column>
+
+        <pv-column field="phone" header="Teléfono" class="col-phone">
+          <template #body="{ data }">
+            <div class="phone-info">
+              <i class="pi pi-phone"></i>
+              <span>{{ data.phone }}</span>
+            </div>
+          </template>
+        </pv-column>
 
         <pv-column header="Acciones" class="col-actions" v-if="canModify">
           <template #body="{ data }">
-            <RouterLink :to="`/hotels/${data.id}/edit`" class="action-link">
+            <div class="action-buttons">
+              <RouterLink :to="`/hotels/${data.id}/edit`">
+                <pv-button
+                    icon="pi pi-pencil"
+                    class="action-btn edit-btn"
+                    v-tooltip.top="'Editar Hotel'"
+                />
+              </RouterLink>
               <pv-button
-                  icon="pi pi-pencil"
-                  class="p-button-rounded p-button-text p-button-warning mr-1"
-                  v-tooltip.top="'Editar Hotel'"
+                  icon="pi pi-trash"
+                  class="action-btn delete-btn"
+                  v-tooltip.top="'Eliminar Hotel'"
+                  @click="handleDelete(data.id, data.name)"
               />
-            </RouterLink>
-            <pv-button
-                icon="pi pi-trash"
-                class="p-button-rounded p-button-text p-button-danger"
-                v-tooltip.top="'Eliminar Hotel'"
-                @click="handleDelete(data.id, data.name)" />
+            </div>
           </template>
         </pv-column>
       </pv-data-table>
     </div>
 
-    <div v-if="store.errors.length" class="error-message-wrapper">
+    <div v-if="store.errors.length" class="error-section">
       <pv-message severity="error">
-        <i class="pi pi-exclamation-triangle error-message-icon"></i> No se pudo obtener la lista de hoteles. Por favor, revise su conexión.
+        <div class="error-content">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>No se pudo obtener la lista de hoteles. Por favor, revise su conexión.</span>
+        </div>
       </pv-message>
     </div>
-
   </div>
 </template>
 
 <style scoped>
-/* (Los estilos proporcionados se mantienen aquí) */
-
-/* -------------------------------------- */
-/* LAYOUT BASE Y PÁGINA */
-/* -------------------------------------- */
-
-.hotels-page-container {
-  padding: 2rem;
-  background-color: #f8f9fa;
-  min-height: 100vh;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.page-header-section {
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.hotels-admin-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  padding: 2rem;
+}
+
+.page-header {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #dee2e6;
+  gap: 2rem;
+  flex-wrap: wrap;
 }
 
-.page-title-main {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #343a40;
+.header-title-section {
   display: flex;
   align-items: center;
+  gap: 1.5rem;
 }
 
-.header-icon {
-  margin-right: 0.75rem;
-  color: #007bff;
-  font-size: 1.5rem;
+.icon-badge {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
 }
 
-.action-button {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.icon-badge i {
+  font-size: 2rem;
+  color: white;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.25rem;
+}
+
+.page-subtitle {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.create-link {
+  text-decoration: none;
+}
+
+.create-btn {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   transition: all 0.3s ease;
 }
 
-.action-button:hover {
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+.create-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
-/* -------------------------------------- */
-/* TABLA Y CONTENEDOR */
-/* -------------------------------------- */
-
-.table-card-wrapper {
-  background-color: #ffffff;
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
-  border-radius: 0.75rem;
+.table-wrapper {
+  background: white;
+  border-radius: 20px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.6s ease-out 0.1s both;
 }
 
-/* Estilos de PrimeVue internos (usando :deep para modificarlos) */
-.hotels-data-table :deep(.p-datatable-header) {
-  background-color: #f8f9fa;
-  padding: 1.25rem 1.5rem;
-  font-weight: 600;
-  color: #495057;
+.hotels-table {
+  border-radius: 20px;
 }
 
-.hotels-data-table :deep(.p-datatable-thead > tr > th) {
-  background-color: #e9ecef;
-  color: #495057;
-  font-weight: 600;
+.hotels-table :deep(.p-datatable-thead > tr > th) {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #1e293b;
+  font-weight: 700;
   font-size: 0.875rem;
-  padding: 0.75rem 1rem;
+  padding: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
-.hotels-data-table :deep(.p-datatable-tbody > tr) {
-  transition: background-color 0.2s;
+.hotels-table :deep(.p-datatable-tbody > tr) {
+  transition: all 0.2s ease;
 }
 
-.hotels-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background-color: #f1f3f5 !important;
+.hotels-table :deep(.p-datatable-tbody > tr:hover) {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+  transform: scale(1.01);
 }
 
-/* Estilos de columnas específicas */
+.loading-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.loading-spinner {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: slideIn 0.5s ease-out;
+}
+
+.loading-spinner i {
+  font-size: 2.5rem;
+  color: white;
+}
+
 .col-id {
-  width: 6rem;
+  width: 100px;
 }
-.id-text {
+
+.id-badge {
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+  color: #4338ca;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
   font-family: monospace;
-  font-size: 0.75rem;
-  color: #6c757d;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .col-image {
-  width: 8rem;
+  width: 120px;
 }
-.hotel-image {
+
+.image-wrapper {
+  width: 100px;
+  height: 70px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.image-wrapper:hover {
+  transform: scale(1.05);
+}
+
+.hotel-thumbnail {
   width: 100%;
-  height: 4.5rem;
+  height: 100%;
   object-fit: cover;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-.no-image-placeholder {
-  text-align: center;
-  color: #adb5bd;
-  font-size: 1.25rem;
-  padding: 0.5rem 0;
 }
 
-.name-text {
-  font-weight: 600;
-  color: #343a40;
+.no-image {
+  width: 100px;
+  height: 70px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 1.5rem;
 }
 
-.col-address, .col-phone {
+.hotel-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.address-info,
+.phone-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #64748b;
   font-size: 0.9rem;
-  color: #6c757d;
+}
+
+.address-info i,
+.phone-info i {
+  color: #3b82f6;
 }
 
 .col-actions {
-  width: 9rem;
-  text-align: center;
+  width: 120px;
 }
 
-/* -------------------------------------- */
-/* ESTADO DE CARGA Y ERRORES */
-/* -------------------------------------- */
-
-.loading-state {
-  padding: 1.5rem;
-  text-align: center;
-  color: #6c757d;
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
 }
-.loading-icon {
-  margin-right: 0.5rem;
+
+.action-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.edit-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  color: white;
+}
+
+.edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+}
+
+.delete-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  color: white;
+}
+
+.delete-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(239, 68, 68, 0.4);
+}
+
+.error-section {
+  margin-top: 2rem;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.error-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.error-content i {
   font-size: 1.5rem;
-  color: #007bff;
 }
 
-.error-message-wrapper {
-  margin-top: 1.5rem;
-  box-shadow: 0 4px 6px rgba(220, 53, 69, 0.1);
-  border-radius: 0.5rem;
-}
+@media (max-width: 768px) {
+  .hotels-admin-container {
+    padding: 1rem;
+  }
 
-.error-message-icon {
-  margin-right: 0.5rem;
-  font-size: 1.25rem;
+  .page-header {
+    padding: 1.5rem;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-title-section {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+  }
 }
 </style>
