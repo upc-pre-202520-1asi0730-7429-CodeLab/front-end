@@ -32,6 +32,12 @@ const canModify = computed(() => {
   return userStore.currentUser?.role !== 'Client';
 });
 
+const filteredHotels = computed(() => {
+  const userId = userStore.currentUser?.id;
+  if (!userId) return store.hotels;
+  return store.hotels.filter(hotel => hotel.userId === userId);
+});
+
 const handleDelete = async (id, name) => {
   if (!canModify.value) {
     toast.add({
@@ -95,7 +101,7 @@ const handleDelete = async (id, name) => {
 
     <div class="table-wrapper">
       <pv-data-table
-          :value="store.hotels"
+          :value="filteredHotels"
           dataKey="id"
           :loading="store.loading"
           responsiveLayout="scroll"

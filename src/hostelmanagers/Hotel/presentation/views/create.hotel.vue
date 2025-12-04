@@ -117,7 +117,7 @@ const handleCreate = async () => {
     imageFile.value = null;
 
     setTimeout(() => {
-      router.push("/hotels/delete");
+      router.push("/hotels");
     }, 1500);
 
   } else {
@@ -126,7 +126,7 @@ const handleCreate = async () => {
   }
 };
 
-const goBack = () => router.push({ name: "hotel-list" });
+const goBack = () => router.push({ name: "hotels" });
 </script>
 
 <template>
