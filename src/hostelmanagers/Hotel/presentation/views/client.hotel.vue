@@ -261,6 +261,7 @@ const viewHotelDetails = (id) => {
   border-radius: 16px;
   font-size: 1rem;
   background: transparent;
+  color: #0f172a;
 }
 
 .search-input:focus {

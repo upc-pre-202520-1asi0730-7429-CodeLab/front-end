@@ -3,7 +3,10 @@ import { ref, onMounted, computed } from 'vue';
 import useUserStore from '../../../IAM/application/user.store.js';
 import { useToast } from 'primevue/usetoast';
 import { useReservationStore } from "../../application/reservation.store.js";
+import useHotelStore from "../../../Hotel/application/hotel.store.js";
 
+const hotelStore = useHotelStore();
+const roomStore = useRoomStore();
 // 🚀 Importaciones de Componentes de PrimeVue (solo necesarias en la plantilla)
 import Card from 'primevue/card';
 import Button from 'primevue/button';
@@ -14,6 +17,7 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tooltip from 'primevue/tooltip';
 import {RoomsApi} from "../../../Room/Infrastructure/room-api.js";
+import {useRoomStore} from "../../../Room/Application/room.store.js";
 
 defineOptions({
   name: 'ReservationView'
@@ -55,15 +59,40 @@ const getCloudinaryUrl = (resourcePath) => {
   return resourcePath ? `${CLOUDINARY_BASE_URL}${resourcePath}` : DEFAULT_IMAGE_PATH;
 };
 
+// Hoteles del usuario administrador
+const adminHotels = computed(() =>
+    hotelStore.hotels.filter(h => h.userId === userStore.currentUser.id)
+);
 
-// --- Propiedades Computadas y Lógica de Visualización ---
+// Habitaciones de esos hoteles
+const adminRooms = computed(() =>
+    roomStore.rooms.filter(r =>
+        adminHotels.value.some(h => h.id === r.hotelId)
+    )
+);
+
+// IDs de habitaciones del admin
+const adminRoomIds = computed(() =>
+    adminRooms.value.map(r => r.id)
+);
+
 const reservations = computed(() => {
   const currentUserId = userStore.currentUser?.id;
   const userRole = userStore.currentUser?.role;
   const currentUserIdString = currentUserId ? String(currentUserId) : null;
 
+  if (!userRole) return [];
+
+  // 👤 Cliente → solo sus reservas
   if (userRole === 'Client' && currentUserIdString) {
     return enrichedReservations.value.filter(res => res.userId === currentUserIdString);
+  }
+
+  // 🏨 Admin → reservas SOLO de sus habitaciones
+  if (userRole === 'Admin') {
+    return enrichedReservations.value.filter(res =>
+        adminRoomIds.value.includes(res.roomId)
+    );
   }
 
   return enrichedReservations.value;
@@ -141,7 +170,7 @@ const loadReservations = async () => {
 };
 
 // --- Ciclo de Vida ---
-onMounted(() => {
+onMounted(async () => {
   if (!userStore.currentUser) {
     toast.add({
       severity: 'warn',
@@ -150,9 +179,12 @@ onMounted(() => {
       life: 5000
     });
   } else {
-    loadReservations();
+    await hotelStore.fetchHotels();
+    await roomStore.fetchRooms();
+    await loadReservations();
   }
 });
+
 </script>
 
 <template>
