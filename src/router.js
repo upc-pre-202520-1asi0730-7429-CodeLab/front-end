@@ -6,9 +6,12 @@ import CreateHotel from "./hostelmanagers/Hotel/presentation/views/create.hotel.
 import UpdateHotel from "./hostelmanagers/Hotel/presentation/views/actualizar.hotel.vue";
 import EliminarHotel from "./hostelmanagers/Hotel/presentation/views/eliminar.hotel.vue";
 import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.hotel.vue";
+import MostrarRooms from "./hostelmanagers/Room/presentation/views/mostrar.room.vue";
+import CreateRoom from "./hostelmanagers/Room/presentation/views/create.room.vue";
 import PageNotFound from "./shared/presentation/views/page-not-found.vue";
 import CreateSuscription from "./hostelmanagers/Suscriptions/presentation/views/create.suscription.vue";
 import MostrarSuscriptions from "./hostelmanagers/Suscriptions/presentation/views/mostrar.suscription.vue";
+import UpdateRoom from "./hostelmanagers/Room/presentation/views/actualizar.room.vue";
 
 const routes = [
     {
@@ -55,9 +58,30 @@ const routes = [
                 path: "hotels/delete",
                 name: "delete-hotel",
                 component: EliminarHotel,
-                meta: { title: "Delete", public: true }
+                meta: { title: "Delete Hotel", public: true }
+            },
+
+            // --- RUTAS DE ROOMS ---
+            {
+                // Esta ruta muestra las habitaciones de UN hotel específico
+                path: "hotels/:hotelId/rooms",
+                name: "hotel-rooms",
+                component: MostrarRooms,
+                meta: { title: "Hotel Rooms", public: true }
             },
             {
+                // Esta ruta es el formulario para crear habitación en ese hotel
+                path: "hotels/:hotelId/rooms/create",
+                name: "create-room",
+                component: CreateRoom,
+                meta: { title: "Create Room", public: true }
+            },
+            {
+                path: "hotels/:hotelId/rooms/:id/edit",
+                name: "update-room",
+                component: UpdateRoom,
+                meta: { title: "Update Room", public: true }
+            },            {
                 path: "subscriptions",
                 name: "show-subscriptions",
                 component: MostrarSuscriptions,
