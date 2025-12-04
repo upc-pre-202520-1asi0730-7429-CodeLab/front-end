@@ -7,6 +7,8 @@ import UpdateHotel from "./hostelmanagers/Hotel/presentation/views/actualizar.ho
 import EliminarHotel from "./hostelmanagers/Hotel/presentation/views/eliminar.hotel.vue";
 import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.hotel.vue";
 import PageNotFound from "./shared/presentation/views/page-not-found.vue";
+import CreateSuscription from "./hostelmanagers/Suscriptions/presentation/views/create.suscription.vue";
+import MostrarSuscriptions from "./hostelmanagers/Suscriptions/presentation/views/mostrar.suscription.vue";
 
 const routes = [
     {
@@ -54,7 +56,19 @@ const routes = [
                 name: "delete-hotel",
                 component: EliminarHotel,
                 meta: { title: "Delete", public: true }
-            }
+            },
+            {
+                path: "subscriptions",
+                name: "show-subscriptions",
+                component: MostrarSuscriptions,
+                meta: { title: "Subscriptions", public: true }
+            },
+            {
+                path: "subscriptions/create",
+                name: "create-subscription",
+                component: CreateSuscription,
+                meta: { title: "New Subscription", public: true }
+            },
         ]
     },
     {
