@@ -9,6 +9,7 @@ import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.ho
 import MostrarRooms from "./hostelmanagers/Room/presentation/views/mostrar.room.vue";
 import CreateRoom from "./hostelmanagers/Room/presentation/views/create.room.vue";
 import PageNotFound from "./shared/presentation/views/page-not-found.vue";
+import UpdateRoom from "./hostelmanagers/Room/presentation/views/actualizar.room.vue";
 
 const routes = [
     {
@@ -59,7 +60,7 @@ const routes = [
                 meta: { title: "Delete Hotel", public: true }
             },
 
-            // --- RUTAS DE ROOMS (NUEVAS) ---
+            // --- RUTAS DE ROOMS ---
             {
                 // Esta ruta muestra las habitaciones de UN hotel específico
                 path: "hotels/:hotelId/rooms",
@@ -73,6 +74,12 @@ const routes = [
                 name: "create-room",
                 component: CreateRoom,
                 meta: { title: "Create Room", public: true }
+            },
+            {
+                path: "hotels/:hotelId/rooms/:id/edit",
+                name: "update-room",
+                component: UpdateRoom,
+                meta: { title: "Update Room", public: true }
             }
         ]
     },

@@ -13,6 +13,7 @@ const useRoomStore = defineStore("rooms", () => {
 
     const fetchRooms = async () => {
         loading.value = true;
+        errors.value = [];
         try {
             const response = await api.getRooms();
             rooms.value = RoomsAssembler.toEntitiesFromResponse(response);
@@ -25,6 +26,7 @@ const useRoomStore = defineStore("rooms", () => {
 
     const fetchRoomsByHotelId = async (hotelId) => {
         loading.value = true;
+        errors.value = [];
         try {
             const response = await api.getRooms();
             const allRooms = RoomsAssembler.toEntitiesFromResponse(response);
@@ -37,8 +39,24 @@ const useRoomStore = defineStore("rooms", () => {
         }
     };
 
+
+    const fetchRoomById = async (id) => {
+        loading.value = true;
+        errors.value = [];
+        try {
+            const response = await api.getRoomById(id);
+
+            currentRoom.value = RoomsAssembler.toEntityFromResource(response.data);
+        } catch (err) {
+            errors.value.push(err);
+        } finally {
+            loading.value = false;
+        }
+    };
+
     const createRoom = async (roomData) => {
         loading.value = true;
+        errors.value = [];
         try {
             await api.createRoom(roomData);
             return true;
@@ -50,8 +68,24 @@ const useRoomStore = defineStore("rooms", () => {
         }
     };
 
+
+    const updateRoom = async (id, roomData) => {
+        loading.value = true;
+        errors.value = [];
+        try {
+            await api.updateRoom(id, roomData);
+            return true;
+        } catch (err) {
+            errors.value.push(err);
+            return false;
+        } finally {
+            loading.value = false;
+        }
+    };
+
     const deleteRoom = async (id) => {
         loading.value = true;
+        errors.value = [];
         try {
             await api.deleteRoom(id);
             return true;
@@ -70,7 +104,9 @@ const useRoomStore = defineStore("rooms", () => {
         errors,
         fetchRooms,
         fetchRoomsByHotelId,
+        fetchRoomById,
         createRoom,
+        updateRoom,
         deleteRoom
     };
 });
