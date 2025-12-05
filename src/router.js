@@ -8,6 +8,9 @@ import UpdateHotel from "./hostelmanagers/Hotel/presentation/views/actualizar.ho
 import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.hotel.vue";
 import MostrarRooms from "./hostelmanagers/Room/presentation/views/mostrar.room.vue";
 import CreateRoom from "./hostelmanagers/Room/presentation/views/create.room.vue";
+import PageNotFound from "./shared/presentation/views/page-not-found.vue";
+import CreateSuscription from "./hostelmanagers/Suscriptions/presentation/views/create.suscription.vue";
+import MostrarSuscriptions from "./hostelmanagers/Suscriptions/presentation/views/mostrar.suscription.vue";
 import UpdateRoom from "./hostelmanagers/Room/presentation/views/actualizar.room.vue";
 
 const routes = [
@@ -75,7 +78,18 @@ const routes = [
                 name: "update-room",
                 component: UpdateRoom,
                 meta: { title: "Update Room", public: true }
-            }
+            },            {
+                path: "subscriptions",
+                name: "show-subscriptions",
+                component: MostrarSuscriptions,
+                meta: { title: "Subscriptions", public: true }
+            },
+            {
+                path: "subscriptions/create",
+                name: "create-subscription",
+                component: CreateSuscription,
+                meta: { title: "New Subscription", public: true }
+            },
         ]
     },
     {
