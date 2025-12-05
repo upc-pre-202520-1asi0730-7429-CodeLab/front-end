@@ -9,42 +9,28 @@ defineOptions({
   name: 'CreateReservation'
 });
 
-// --- Stores y Hooks ---
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const reservationStore = useReservationStore();
 const userStore = useUserStore();
 
-// --- Estado Reactivo del Formulario ---
 const loading = ref(false);
 
 const reservationData = ref({
-  userId: userStore.currentUser?.id || null, // ID del usuario autenticado (se asume string)
-  // 🔑 CORRECCIÓN: Leer el ID de la habitación desde route.params.id (parámetro de ruta)
+  userId: userStore.currentUser?.id || null,
   roomId: route.params.id || null,
-  checkInDate: new Date(),                   // Fecha de Check-In: HOY
-  checkOutDate: null,                        // Fecha de Check-Out: Debe ser seleccionada
+  checkInDate: new Date(),
+  checkOutDate: null,
 });
 
-// --- Propiedades Computadas y Lógica de Fechas ---
-
-/**
- * Fecha mínima permitida para la selección de Check-Out:
- * Mañana (el día después de Check-In).
- */
 const minCheckOutDate = computed(() => {
   const minDate = new Date(reservationData.value.checkInDate);
-  // Clonar la fecha de Check-In y sumar un día
   minDate.setDate(minDate.getDate() + 1);
   return minDate;
 });
 
-/**
- * Indica si el formulario es válido para ser enviado.
- */
 const isFormValid = computed(() => {
-  // Debe haber un userId, un roomId y checkOutDate debe ser posterior a checkInDate
   return (
       !!reservationData.value.userId &&
       !!reservationData.value.roomId &&
@@ -52,8 +38,6 @@ const isFormValid = computed(() => {
       reservationData.value.checkOutDate > reservationData.value.checkInDate
   );
 });
-
-// --- Lógica de Creación ---
 
 const handleSubmit = async () => {
   if (!isFormValid.value) {
@@ -66,29 +50,18 @@ const handleSubmit = async () => {
     return;
   }
 
-  // 1. Construcción del Payload con corrección de tipos
   const payload = {
     userId: String(reservationData.value.userId),
-
-    // 🔑 CORRECCIÓN: Convertir roomId de string a NUMBER (int) para el backend
     roomId: reservationData.value.roomId,
-
-    // Convertir fechas a formato ISO string para el tipo DateTime del backend
     checkInDate: reservationData.value.checkInDate.toISOString(),
     checkOutDate: reservationData.value.checkOutDate.toISOString(),
-
-    // NOTA: Se excluye 'status' ya que puede ser generado por el backend,
-    // pero si tu API lo requiere, descomenta la siguiente línea:
-    // status: 'Pending'
   };
 
-  // 2. LOGGING: Muestra los datos que se enviarán
   console.log("--- Diagnóstico Payload de Reserva ---");
   console.log("🚀 Payload Enviado:", payload);
   console.log("Tipo de roomId (Debe ser number):", typeof payload.roomId, "Valor:", payload.roomId);
   console.log("Tipo de userId (Debe ser string):", typeof payload.userId, "Valor:", payload.userId);
   console.log("--------------------------------------");
-
 
   loading.value = true;
 
@@ -102,10 +75,8 @@ const handleSubmit = async () => {
         detail: '¡Tu reserva ha sido registrada con éxito!',
         life: 3000
       });
-      // Redirigir a la vista de las reservas del usuario
       router.push({name: 'ReservationView'});
     } else {
-      // El store ya maneja el error y lo guarda en reservationStore.errors
       throw new Error("Fallo al contactar al servidor o error interno.");
     }
 
@@ -126,9 +97,7 @@ const goBack = () => {
   router.back();
 };
 
-// --- Ciclo de Vida ---
 onMounted(() => {
-  // Validar si tenemos la información mínima necesaria
   if (!reservationData.value.userId) {
     toast.add({
       severity: 'error',
@@ -149,65 +118,80 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="reservation-creation-container">
-
+  <div class="create-reservation-container">
     <pv-toast position="top-right"/>
 
-    <div class="header-section">
-      <pv-button
-          icon="pi pi-arrow-left"
-          label="Volver"
-          class="p-button-text p-button-sm mb-4"
-          @click="goBack"
-      />
-      <h1 class="page-title">
-        <i class="pi pi-calendar-plus header-icon"></i>
-        Crear Nueva Reserva
-      </h1>
-      <p class="subtitle">Habitación ID: <span class="room-id-tag">{{ reservationData.roomId || 'N/A' }}</span></p>
-    </div>
+    <div class="form-wrapper">
+      <div class="back-button-wrapper">
+        <pv-button
+            icon="pi pi-arrow-left"
+            label="Volver"
+            class="back-btn"
+            @click="goBack"
+        />
+      </div>
 
-    <pv-card class="reservation-form-card">
-      <template #content>
+      <div class="form-card">
+        <div class="card-header">
+          <div class="icon-wrapper">
+            <i class="pi pi-calendar-plus"></i>
+          </div>
+          <div>
+            <h1 class="card-title">Nueva Reserva</h1>
+            <p class="card-subtitle">
+              Habitación ID: <span class="room-badge">{{ reservationData.roomId || 'N/A' }}</span>
+            </p>
+          </div>
+        </div>
 
-        <form @submit.prevent="handleSubmit">
+        <form @submit.prevent="handleSubmit" class="form-content">
+          <div class="info-section">
+            <div class="info-card">
+              <label class="info-label">Usuario Autenticado</label>
+              <pv-input-text
+                  :modelValue="reservationData.userId || 'Cargando...'"
+                  disabled
+                  class="info-input"
+              />
+            </div>
 
-          <div class="p-field mb-4">
-            <label class="p-label font-bold">Usuario ID (Autenticado)</label>
-            <pv-input-text
-                :modelValue="reservationData.userId || 'Cargando...'"
-                disabled
-                class="w-full text-sm disabled-input"
-            />
+            <div class="info-card">
+              <label class="info-label">Habitación Seleccionada</label>
+              <pv-input-text
+                  :modelValue="reservationData.roomId || 'N/A'"
+                  disabled
+                  class="info-input"
+              />
+            </div>
           </div>
 
-          <div class="p-field mb-4">
-            <label class="p-label font-bold">Habitación ID</label>
-            <pv-input-text
-                :modelValue="reservationData.roomId || 'N/A'"
-                disabled
-                class="w-full text-sm disabled-input"
-            />
+          <div class="divider-section">
+            <div class="divider-line"></div>
+            <span class="divider-text">Fechas de Estancia</span>
+            <div class="divider-line"></div>
           </div>
 
-          <pv-divider/>
-
-          <div class="dates-group">
-
-            <div class="p-field flex-1">
-              <label for="checkInDate" class="p-label required-label">Fecha de Llegada (Check-In)</label>
+          <div class="dates-section">
+            <div class="date-field">
+              <label for="checkInDate" class="date-label">
+                <i class="pi pi-calendar"></i>
+                Fecha de Check-In
+              </label>
               <pv-calendar
                   id="checkInDate"
                   :modelValue="reservationData.checkInDate"
                   disabled
                   dateFormat="dd/mm/yy"
-                  class="w-full disabled-calendar"
+                  class="date-input disabled"
               />
-              <small class="p-error">El Check-In es hoy y no se puede modificar.</small>
+              <small class="date-hint">El check-in es hoy y no puede modificarse</small>
             </div>
 
-            <div class="p-field flex-1">
-              <label for="checkOutDate" class="p-label required-label">Fecha de Salida (Check-Out)</label>
+            <div class="date-field">
+              <label for="checkOutDate" class="date-label required">
+                <i class="pi pi-calendar"></i>
+                Fecha de Check-Out
+              </label>
               <pv-calendar
                   id="checkOutDate"
                   v-model="reservationData.checkOutDate"
@@ -216,116 +200,330 @@ onMounted(() => {
                   showIcon
                   dateFormat="dd/mm/yy"
                   placeholder="Seleccione fecha de salida"
-                  :class="{'p-invalid': reservationData.checkOutDate && reservationData.checkOutDate <= reservationData.checkInDate}"
-                  class="w-full"
+                  :class="{'invalid-date': reservationData.checkOutDate && reservationData.checkOutDate <= reservationData.checkInDate}"
+                  class="date-input"
               />
               <small v-if="reservationData.checkOutDate && reservationData.checkOutDate <= reservationData.checkInDate"
-                     class="p-error">
-                La fecha de salida debe ser posterior a la de llegada.
+                     class="error-hint">
+                <i class="pi pi-exclamation-circle"></i>
+                La fecha de salida debe ser posterior a la de llegada
               </small>
             </div>
-
           </div>
 
-          <div class="p-form-actions mt-6">
+          <div class="form-actions">
             <pv-button
                 type="submit"
                 label="Confirmar Reserva"
                 icon="pi pi-check-circle"
                 :loading="loading"
                 :disabled="!isFormValid || loading"
-                class="w-full p-button-success"
+                class="submit-btn"
             />
           </div>
 
           <pv-message
               v-if="reservationStore.errors.length"
               severity="error"
-              class="mt-3 w-full"
+              class="error-message"
           >
             {{ reservationStore.errors[0]?.message || 'Error desconocido al procesar.' }}
           </pv-message>
-
         </form>
-
-      </template>
-    </pv-card>
-
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-/* Estilos omitidos por brevedad, asumiendo que ya funcionan correctamente */
-.reservation-creation-container {
-  padding: 2rem;
-  background-color: #f4f4f7;
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.create-reservation-container {
   min-height: 100vh;
-  max-width: 600px; /* Limitar el ancho del formulario */
-  margin: 0 auto;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.header-section {
-  padding-bottom: 1rem;
+.form-wrapper {
+  width: 100%;
+  max-width: 700px;
+  animation: fadeInScale 0.5s ease-out;
+}
+
+.back-button-wrapper {
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid #dee2e6;
 }
 
-.page-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #343a40;
+.back-btn {
+  background: white;
+  color: #3b82f6;
+  border: 2px solid #bfdbfe;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #f0f9ff;
+  transform: translateX(-5px);
+}
+
+.form-card {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.card-header {
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  padding: 2.5rem 2rem;
   display: flex;
   align-items: center;
-  margin: 0.5rem 0;
+  gap: 1.5rem;
+  color: white;
 }
 
-.header-icon {
-  margin-right: 0.75rem;
-  color: #007bff;
-  font-size: 1.5rem;
+.icon-wrapper {
+  width: 70px;
+  height: 70px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.subtitle {
-  font-size: 0.9rem;
-  color: #6c757d;
+.icon-wrapper i {
+  font-size: 2rem;
 }
 
-.room-id-tag {
+.card-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.card-subtitle {
+  font-size: 0.95rem;
+  margin: 0;
+  opacity: 0.95;
+}
+
+.room-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.form-content {
+  padding: 2rem;
+}
+
+.info-section {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  animation: slideUp 0.4s ease-out;
+}
+
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-label {
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #007bff;
+  color: #475569;
 }
 
-.reservation-form-card {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-  border-radius: 0.75rem;
+.info-input {
+  width: 100%;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+  border-radius: 12px;
 }
 
-.p-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #495057;
+.divider-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0;
 }
 
-.required-label::after {
+.divider-line {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+}
+
+.divider-text {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #3b82f6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dates-section {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  animation: slideUp 0.5s ease-out;
+}
+
+.date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.date-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.date-label i {
+  color: #3b82f6;
+  font-size: 1rem;
+}
+
+.date-label.required::after {
   content: '*';
-  color: #dc3545;
+  color: #ef4444;
   margin-left: 0.25rem;
+  font-size: 1.125rem;
 }
 
-.disabled-input, .disabled-calendar :deep(input) {
-  background-color: #e9ecef !important;
-  color: #6c757d !important;
+.date-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.date-input:not(.disabled):focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.date-input.disabled {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   cursor: not-allowed;
 }
 
-.dates-group {
-  display: flex;
-  gap: 1.5rem;
+.date-input.invalid-date {
+  border-color: #ef4444;
 }
 
-@media (max-width: 640px) {
-  .dates-group {
+.date-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.error-hint {
+  font-size: 0.8rem;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.error-hint i {
+  font-size: 0.875rem;
+}
+
+.form-actions {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 2px solid #f1f5f9;
+}
+
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  border: none;
+  color: white;
+  padding: 1rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transition: all 0.3s ease;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-message {
+  margin-top: 1.5rem;
+  border-radius: 12px;
+  animation: slideUp 0.3s ease-out;
+}
+
+@media (max-width: 768px) {
+  .create-reservation-container {
+    padding: 1rem;
+  }
+
+  .card-header {
     flex-direction: column;
+    text-align: center;
+    padding: 2rem 1.5rem;
+  }
+
+  .info-section,
+  .dates-section {
+    grid-template-columns: 1fr;
+  }
+
+  .form-content {
+    padding: 1.5rem;
   }
 }
 </style>

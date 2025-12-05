@@ -7,7 +7,6 @@ import useHotelStore from "../../../Hotel/application/hotel.store.js";
 
 const hotelStore = useHotelStore();
 const roomStore = useRoomStore();
-// 🚀 Importaciones de Componentes de PrimeVue (solo necesarias en la plantilla)
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
@@ -23,22 +22,18 @@ defineOptions({
   name: 'ReservationView'
 });
 
-// --- Configuración y Directivas ---
 const CLOUDINARY_BASE_URL = "https://res.cloudinary.com/doekyziqa/image/upload/";
 const DEFAULT_IMAGE_PATH = 'path/to/default/image.jpg';
 const vTooltip = Tooltip;
 
-// --- Stores y APIs ---
 const reservationStore = useReservationStore();
 const userStore = useUserStore();
 const toast = useToast();
 const roomsApi = new RoomsApi();
 
-// --- Estado Reactivo ---
 const loading = ref(true);
 const enrichedReservations = ref([]);
 
-// --- Utilidades ---
 const calculateDays = (checkIn, checkOut) => {
   const start = new Date(checkIn);
   const end = new Date(checkOut);
@@ -59,19 +54,16 @@ const getCloudinaryUrl = (resourcePath) => {
   return resourcePath ? `${CLOUDINARY_BASE_URL}${resourcePath}` : DEFAULT_IMAGE_PATH;
 };
 
-// Hoteles del usuario administrador
 const adminHotels = computed(() =>
     hotelStore.hotels.filter(h => h.userId === userStore.currentUser.id)
 );
 
-// Habitaciones de esos hoteles
 const adminRooms = computed(() =>
     roomStore.rooms.filter(r =>
         adminHotels.value.some(h => h.id === r.hotelId)
     )
 );
 
-// IDs de habitaciones del admin
 const adminRoomIds = computed(() =>
     adminRooms.value.map(r => r.id)
 );
@@ -83,12 +75,10 @@ const reservations = computed(() => {
 
   if (!userRole) return [];
 
-  // 👤 Cliente → solo sus reservas
   if (userRole === 'Client' && currentUserIdString) {
     return enrichedReservations.value.filter(res => res.userId === currentUserIdString);
   }
 
-  // 🏨 Admin → reservas SOLO de sus habitaciones
   if (userRole === 'Admin') {
     return enrichedReservations.value.filter(res =>
         adminRoomIds.value.includes(res.roomId)
@@ -111,7 +101,6 @@ const getStatusSeverity = (status) => {
   }
 };
 
-// --- Lógica de Carga y Enriquecimiento de Datos ---
 const loadReservations = async () => {
   loading.value = true;
   enrichedReservations.value = [];
@@ -127,7 +116,6 @@ const loadReservations = async () => {
       try {
         const response = await roomsApi.getRoomById(reservation.roomId);
 
-        // Usamos 'imagen' según la corrección anterior
         const imagePath = response.data?.imagen;
         roomData.image = getCloudinaryUrl(imagePath);
         roomData.price = response.data?.price || 0;
@@ -149,7 +137,6 @@ const loadReservations = async () => {
 
     const finalReservations = await Promise.all(roomPromises);
 
-    // 🔑 LOG DE DEPURACIÓN AGREGADO AQUÍ
     console.log('=== Datos de Reservas Enriquecidas para la Tabla ===');
     console.log(finalReservations);
     console.log('==================================================');
@@ -169,7 +156,6 @@ const loadReservations = async () => {
   }
 };
 
-// --- Ciclo de Vida ---
 onMounted(async () => {
   if (!userStore.currentUser) {
     toast.add({
@@ -184,22 +170,25 @@ onMounted(async () => {
     await loadReservations();
   }
 });
-
 </script>
 
 <template>
-  <div class="hotels-page-container">
-
+  <div class="reservations-container">
     <Toast position="top-right"/>
 
-    <div class="page-header-section">
-      <h1 class="page-title-main">
-        <i class="pi pi-calendar-check header-icon"></i>
-        Mis Reservas
-      </h1>
+    <div class="page-header">
+      <div class="header-content">
+        <div class="icon-badge">
+          <i class="pi pi-calendar-check"></i>
+        </div>
+        <div>
+          <h1 class="page-title">Mis Reservas</h1>
+          <p class="page-subtitle">Gestiona tus reservaciones activas</p>
+        </div>
+      </div>
     </div>
 
-    <div class="table-card-wrapper">
+    <div class="table-wrapper">
       <DataTable
           :value="reservations"
           dataKey="id"
@@ -209,249 +198,369 @@ onMounted(async () => {
           :rows="10"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
           :rowsPerPageOptions="[10, 20, 50]"
-          class="hotels-data-table"
+          class="reservations-table"
       >
         <template #loading>
           <div class="loading-state">
-            <ProgressSpinner class="loading-icon-pv"/>
-            Cargando listado de reservas...
+            <div class="loading-spinner">
+              <ProgressSpinner class="spinner-icon"/>
+            </div>
+            <p>Cargando tus reservas...</p>
           </div>
         </template>
 
         <Column header="Habitación" class="col-image">
           <template #body="{ data }">
-            <div v-if="data.roomImage">
+            <div class="image-wrapper">
               <img
+                  v-if="data.roomImage"
                   :src="data.roomImage"
                   :alt="'Habitación ' + data.roomId"
-                  class="hotel-image"
+                  class="room-image"
                   v-tooltip.top="`Habitación ID: ${data.roomId}`"
               />
+              <div v-else class="no-image">
+                <i class="pi pi-image"></i>
+              </div>
             </div>
-            <div v-else class="no-image-placeholder">
-              <i class="pi pi-image"></i>
+          </template>
+        </Column>
+
+        <Column field="id" header="ID Reserva" :sortable="true" class="col-id">
+          <template #body="{ data }">
+            <span class="reservation-id">#{{ data.id }}</span>
+          </template>
+        </Column>
+
+        <Column field="checkInDate" header="Check-in" :sortable="true" class="col-date">
+          <template #body="{ data }">
+            <div class="date-cell">
+              <i class="pi pi-calendar"></i>
+              <span>{{ new Date(data.checkInDate).toLocaleDateString('es-ES') }}</span>
             </div>
           </template>
         </Column>
 
-        <Column field="id" header="Res. ID" :sortable="true" class="col-res-id">
+        <Column field="checkOutDate" header="Check-out" :sortable="true" class="col-date">
           <template #body="{ data }">
-            <span class="name-text">{{ data.id }}</span>
-          </template>
-        </Column>
-
-        <Column field="checkInDate" header="Llegada" :sortable="true" class="col-date">
-          <template #body="{ data }">
-            {{ new Date(data.checkInDate).toLocaleDateString() }}
-          </template>
-        </Column>
-
-        <Column field="checkOutDate" header="Salida" :sortable="true" class="col-date">
-          <template #body="{ data }">
-            {{ new Date(data.checkOutDate).toLocaleDateString() }}
+            <div class="date-cell">
+              <i class="pi pi-calendar"></i>
+              <span>{{ new Date(data.checkOutDate).toLocaleDateString('es-ES') }}</span>
+            </div>
           </template>
         </Column>
 
         <Column field="status" header="Estado" :sortable="true" class="col-status">
           <template #body="{ data }">
-                    <span :class="['p-tag', 'p-tag-' + getStatusSeverity(data.status)]"
-                          v-tooltip.top="`Días reservados: ${data.daysReserved}`"
-                    >
-                        {{ data.status }}
-                    </span>
+            <span :class="['status-badge', 'status-' + getStatusSeverity(data.status)]"
+                  v-tooltip.top="`${data.daysReserved} ${data.daysReserved === 1 ? 'noche' : 'noches'}`">
+              <i :class="['pi', {
+                'pi-check-circle': data.status === 'Confirmed',
+                'pi-clock': data.status === 'Pending',
+                'pi-times-circle': data.status === 'Cancelled'
+              }]"></i>
+              {{ data.status }}
+            </span>
           </template>
         </Column>
 
-        <Column field="totalPrice" header="Precio Total" :sortable="true" class="col-price">
+        <Column field="totalPrice" header="Total" :sortable="true" class="col-price">
           <template #body="{ data }">
-            <div class="name-text text-lg">
-              {{ data.totalPrice.toLocaleString('es-PE', {style: 'currency', currency: 'PEN'}) }}
+            <div class="price-cell">
+              <span class="price-amount">
+                {{ data.totalPrice.toLocaleString('es-PE', {style: 'currency', currency: 'PEN'}) }}
+              </span>
+              <span class="price-nights">{{ data.daysReserved }} noche{{ data.daysReserved > 1 ? 's' : '' }}</span>
             </div>
           </template>
         </Column>
       </DataTable>
     </div>
 
-    <div v-if="reservationStore.errors.length" class="error-message-wrapper">
-      <Message severity="error">
-        <i class="pi pi-exclamation-triangle error-message-icon"></i> No se pudo obtener la lista de reservas.
+    <div v-if="reservationStore.errors.length" class="error-section">
+      <Message severity="error" class="error-message">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>No se pudo obtener la lista de reservas.</span>
       </Message>
     </div>
-
   </div>
 </template>
 
 <style scoped>
-/* -------------------------------------- */
-/* LAYOUT BASE Y PÁGINA */
-/* -------------------------------------- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-.hotels-page-container {
-  padding: 2rem;
-  background-color: #f8f9fa;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.reservations-container {
   min-height: 100vh;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 50%, #6ee7b7 100%);
+  padding: 2rem;
 }
 
-.page-header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.page-header {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
   margin-bottom: 2rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #dee2e6;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.5s ease-out;
 }
 
-.page-title-main {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #343a40;
+.header-content {
   display: flex;
   align-items: center;
+  gap: 1.5rem;
 }
 
-.header-icon {
-  margin-right: 0.75rem;
-  color: #007bff;
-  font-size: 1.5rem;
+.icon-badge {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
 }
 
-/* -------------------------------------- */
-/* TABLA Y CONTENEDOR */
-/* -------------------------------------- */
+.icon-badge i {
+  font-size: 2rem;
+  color: white;
+}
 
-.table-card-wrapper {
-  background-color: #ffffff;
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
-  border-radius: 0.75rem;
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.25rem;
+}
+
+.page-subtitle {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.table-wrapper {
+  background: white;
+  border-radius: 20px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.6s ease-out 0.1s both;
 }
 
-/* Estilos de PrimeVue internos (usando :deep para modificarlos) */
-.hotels-data-table :deep(.p-datatable-header) {
-  background-color: #f8f9fa;
-  padding: 1.25rem 1.5rem;
-  font-weight: 600;
-  color: #495057;
-}
-
-.hotels-data-table :deep(.p-datatable-thead > tr > th) {
-  background-color: #e9ecef;
-  color: #495057;
-  font-weight: 600;
+.reservations-table :deep(.p-datatable-thead > tr > th) {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #1e293b;
+  font-weight: 700;
   font-size: 0.875rem;
-  padding: 0.75rem 1rem;
+  padding: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
-.hotels-data-table :deep(.p-datatable-tbody > tr) {
-  transition: background-color 0.2s;
+.reservations-table :deep(.p-datatable-tbody > tr) {
+  transition: all 0.2s ease;
 }
 
-.hotels-data-table :deep(.p-datatable-tbody > tr:hover) {
-  background-color: #f1f3f5 !important;
+.reservations-table :deep(.p-datatable-tbody > tr:hover) {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+  transform: scale(1.01);
 }
-
-/* Estilos de columnas específicas */
-.col-image {
-  width: 8rem;
-}
-
-.hotel-image {
-  width: 100%;
-  height: 4.5rem;
-  object-fit: cover;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.no-image-placeholder {
-  text-align: center;
-  color: #adb5bd;
-  font-size: 1.25rem;
-  padding: 0.5rem 0;
-}
-
-.name-text {
-  font-weight: 600;
-  color: #343a40;
-}
-
-.text-lg {
-  font-size: 1.125rem;
-}
-
-.col-res-id {
-  width: 6rem;
-  font-weight: 700;
-}
-
-.col-date {
-  width: 10rem;
-}
-
-.col-status {
-  width: 10rem;
-  text-align: center;
-}
-
-.col-price {
-  width: 12rem;
-  font-weight: 700;
-}
-
-
-/* -------------------------------------- */
-/* ESTADO DE CARGA Y ERRORES */
-/* -------------------------------------- */
 
 .loading-state {
-  padding: 1.5rem;
   text-align: center;
-  color: #6c757d;
+  padding: 4rem 2rem;
+}
+
+.loading-spinner {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.loading-icon-pv {
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-right: 0.5rem;
-  color: #007bff;
+.spinner-icon {
+  width: 3rem;
+  height: 3rem;
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
-.error-message-wrapper {
-  margin-top: 1.5rem;
-  box-shadow: 0 4px 6px rgba(220, 53, 69, 0.1);
-  border-radius: 0.5rem;
-}
-
-.error-message-icon {
-  margin-right: 0.5rem;
-  font-size: 1.25rem;
-}
-
-/* Clases de Tags de Estado */
-.p-tag {
+.loading-state p {
+  color: #64748b;
+  font-size: 1.125rem;
   font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  color: white;
 }
 
-.p-tag-success {
-  background-color: #10b981;
+.col-image {
+  width: 120px;
 }
 
-.p-tag-info {
-  background-color: #3b82f6;
+.image-wrapper {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
 }
 
-.p-tag-danger {
-  background-color: #ef4444;
+.image-wrapper:hover {
+  transform: scale(1.05);
 }
 
-.p-tag-secondary {
-  background-color: #6b7280;
+.room-image {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  display: block;
+}
+
+.no-image {
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 2rem;
+}
+
+.col-id {
+  width: 120px;
+}
+
+.reservation-id {
+  font-weight: 700;
+  color: #10b981;
+  font-size: 1rem;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  padding: 0.375rem 0.875rem;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.col-date {
+  width: 140px;
+}
+
+.date-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #475569;
+}
+
+.date-cell i {
+  color: #10b981;
+  font-size: 1rem;
+}
+
+.col-status {
+  width: 140px;
+  text-align: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.status-badge i {
+  font-size: 1rem;
+}
+
+.status-success {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+}
+
+.status-info {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+}
+
+.status-danger {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+}
+
+.status-secondary {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+}
+
+.col-price {
+  width: 150px;
+}
+
+.price-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.price-amount {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #047857;
+}
+
+.price-nights {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.error-section {
+  margin-top: 2rem;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.error-message i {
+  font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .reservations-container {
+    padding: 1rem;
+  }
+
+  .page-header {
+    padding: 1.5rem;
+  }
+
+  .header-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+  }
 }
 </style>
