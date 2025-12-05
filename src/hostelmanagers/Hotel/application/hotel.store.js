@@ -52,14 +52,21 @@ const useHotelStore = defineStore("hotels", () => {
         }
     };
 
-    const updateHotel = async (id, { name, images, address, phone, userId }) => {
+    const updateHotel = async (id, hotelData) => {
         loading.value = true;
         errors.value = [];
         try {
-            await api.updateHotel(id, { name, images, address, phone, userId });
+
+            const payload = {
+                id: Number(id),
+                ...hotelData
+            };
+
+            await api.updateHotel(id, payload);
             await fetchHotels();
             return true;
         } catch (err) {
+            console.error(err);
             errors.value.push(err);
             return false;
         } finally {

@@ -2,13 +2,12 @@ import { createRouter, createWebHistory } from "vue-router";
 import MainLayout from "./shared/presentation/components/layout.vue";
 import Login from "./hostelmanagers/IAM/presentation/views/login.vue";
 import Register from "./hostelmanagers/IAM/presentation/views/register.vue";
+import PageNotFound from "./shared/presentation/views/page-not-found.vue";
 import CreateHotel from "./hostelmanagers/Hotel/presentation/views/create.hotel.vue";
 import UpdateHotel from "./hostelmanagers/Hotel/presentation/views/actualizar.hotel.vue";
-import EliminarHotel from "./hostelmanagers/Hotel/presentation/views/eliminar.hotel.vue";
 import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.hotel.vue";
 import MostrarRooms from "./hostelmanagers/Room/presentation/views/mostrar.room.vue";
 import CreateRoom from "./hostelmanagers/Room/presentation/views/create.room.vue";
-import PageNotFound from "./shared/presentation/views/page-not-found.vue";
 import UpdateRoom from "./hostelmanagers/Room/presentation/views/actualizar.room.vue";
 
 const routes = [
@@ -34,6 +33,7 @@ const routes = [
                 component: Register,
                 meta: { title: "Register", public: true }
             },
+
             // --- RUTAS DE HOTELES ---
             {
                 path: "hotels",
@@ -53,29 +53,24 @@ const routes = [
                 component: UpdateHotel,
                 meta: { title: "Update Hotel", public: true }
             },
-            {
-                path: "hotels/delete",
-                name: "delete-hotel",
-                component: EliminarHotel,
-                meta: { title: "Delete Hotel", public: true }
-            },
 
             // --- RUTAS DE ROOMS ---
             {
-                // Esta ruta muestra las habitaciones de UN hotel específico
+                // Ver lista de habitaciones de un hotel
                 path: "hotels/:hotelId/rooms",
                 name: "hotel-rooms",
                 component: MostrarRooms,
                 meta: { title: "Hotel Rooms", public: true }
             },
             {
-                // Esta ruta es el formulario para crear habitación en ese hotel
+                // Crear habitación
                 path: "hotels/:hotelId/rooms/create",
                 name: "create-room",
                 component: CreateRoom,
                 meta: { title: "Create Room", public: true }
             },
             {
+                // Editar habitación
                 path: "hotels/:hotelId/rooms/:id/edit",
                 name: "update-room",
                 component: UpdateRoom,
