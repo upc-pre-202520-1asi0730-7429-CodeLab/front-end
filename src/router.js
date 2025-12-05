@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from "vue-router";
 import MainLayout from "./shared/presentation/components/layout.vue";
 import Login from "./hostelmanagers/IAM/presentation/views/login.vue";
 import Register from "./hostelmanagers/IAM/presentation/views/register.vue";
-import PageNotFound from "./shared/presentation/views/page-not-found.vue";
 import CreateHotel from "./hostelmanagers/Hotel/presentation/views/create.hotel.vue";
 import UpdateHotel from "./hostelmanagers/Hotel/presentation/views/actualizar.hotel.vue";
 import MostrarHoteles from "./hostelmanagers/Hotel/presentation/views/mostrar.hotel.vue";
